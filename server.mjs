@@ -269,7 +269,7 @@ const server = createServer(async (request, response) => {
     response.writeHead(200, {
       'content-type': types[ext] || 'application/octet-stream',
       'content-length': info.size,
-      'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=3600',
+      'cache-control': ext === '.png' ? 'public, max-age=3600' : 'no-store',
       'x-content-type-options': 'nosniff',
       'content-security-policy': "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self'",
     });

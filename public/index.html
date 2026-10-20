@@ -21,6 +21,30 @@
 
     <section id="studio" hidden>
       <canvas id="face" width="1262" height="1246" aria-label="Аватар"></canvas>
+      <section class="card controls">
+        <div>
+          <p class="label">Мимика</p>
+          <div class="choices">
+            <button type="button" data-expression="calm" aria-pressed="true">Покой</button>
+            <button type="button" data-expression="smile" aria-pressed="false">Улыбка</button>
+            <button type="button" data-expression="sad" aria-pressed="false">Грусть</button>
+            <button type="button" data-expression="surprise" aria-pressed="false">Удивление</button>
+            <button type="button" data-expression="stern" aria-pressed="false">Хмурость</button>
+          </div>
+        </div>
+        <div>
+          <p class="label">Губы</p>
+          <div class="choices">
+            <button type="button" data-lip="auto" aria-pressed="true">Авто</button>
+            <button type="button" data-lip="m" aria-pressed="false">М</button>
+            <button type="button" data-lip="a" aria-pressed="false">А</button>
+            <button type="button" data-lip="o" aria-pressed="false">О</button>
+            <button type="button" data-lip="i" aria-pressed="false">И</button>
+          </div>
+          <label for="mouth">Открытие рта</label>
+          <input id="mouth" type="range" min="0" max="100" value="0">
+        </div>
+      </section>
       <form id="speak-form" class="card">
         <label for="text">Текст</label>
         <textarea id="text" name="text" rows="4" maxlength="4000" placeholder="Напишите фразу, которую аватар произнесёт" required></textarea>

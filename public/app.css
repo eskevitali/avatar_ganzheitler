@@ -67,3 +67,19 @@ canvas {
 }
 .status { min-height: 1.4em; color: var(--muted); }
 .status.error { color: var(--danger); }
+.controls { margin-bottom: 16px; }
+.label { color: var(--muted); font-size: 0.92rem; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button {
+  min-height: 40px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+.choices button[aria-pressed="true"] {
+  color: #111318;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="range"] { padding: 0; accent-color: #d7dde8; }
