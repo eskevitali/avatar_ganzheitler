@@ -133,21 +133,24 @@ for (const button of document.querySelectorAll('[data-viseme]')) {
     if (doll.audioCtx) doll.audioCtx.resume();
     const pose = lipPoses[button.dataset.viseme];
     const vs = {};
-    for (const key of lipKeys) vs[key] = [0, pose[key] || 0, 0];
-    const seconds = 0.9;
+    for (const key of lipKeys) {
+      const peak = pose[key] || 0;
+      vs[key] = [0, peak, peak, 0];
+    }
+    const seconds = 1.1;
     const buffer = doll.audioCtx.createBuffer(1, Math.ceil(doll.audioCtx.sampleRate * seconds), doll.audioCtx.sampleRate);
     const token = ++lipToken;
     markPressed('[data-viseme]', button.dataset.viseme, 'viseme');
     setState(button.textContent.trim());
     doll.speakAudio({
       audio: buffer,
-      anim: {name: 'blendshapes', dt: [70, 620, 180], vs},
+      anim: {name: 'blendshapes', dt: [80, 700, 220], vs},
     }, {isRaw: true});
     window.setTimeout(() => {
       if (token !== lipToken || playing) return;
       markPressed('[data-viseme]', '', 'viseme');
       setState('Покой');
-    }, 900);
+    }, 1100);
   });
 }
 
