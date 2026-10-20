@@ -1,3 +1,5 @@
+import {lipKeys, speechMouth} from './mouth.mjs';
+
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
 const speakForm = document.querySelector('#speak-form');
@@ -27,43 +29,6 @@ const markPressed = (selector, value, attr) => {
   for (const button of document.querySelectorAll(selector)) {
     button.setAttribute('aria-pressed', button.dataset[attr] === value ? 'true' : 'false');
   }
-};
-
-const mouthFrames = (buffer) => {
-  const channel = buffer.getChannelData(0);
-  const frame = Math.max(1, Math.round(buffer.sampleRate / 30));
-  const dt = [];
-  const jawOpen = [];
-  const mouthFunnel = [];
-  const mouthSmile = [];
-  for (let i = 0; i < channel.length; i += frame) {
-    const end = Math.min(channel.length, i + frame);
-    let energy = 0;
-    let signChanges = 0;
-    let previous = 0;
-    for (let j = i; j < end; j += 1) {
-      const sample = channel[j];
-      energy += sample * sample;
-      if (j > i && ((sample >= 0 && previous < 0) || (sample < 0 && previous >= 0))) signChanges += 1;
-      previous = sample;
-    }
-    const rms = Math.sqrt(energy / (end - i));
-    const open = Math.min(1, Math.max(0, (rms - 0.015) / 0.11)) ** 0.65;
-    const bright = signChanges / (end - i);
-    dt.push(1000 / 30);
-    jawOpen.push(open);
-    mouthFunnel.push(open * (bright < 0.08 ? 0.45 : 0.12));
-    mouthSmile.push(open * (bright > 0.14 ? 0.35 : 0));
-  }
-  return {
-    dt,
-    vs: {
-      jawOpen,
-      mouthFunnel,
-      mouthSmileLeft: mouthSmile,
-      mouthSmileRight: mouthSmile,
-    },
-  };
 };
 
 const ensureHead = async () => {
@@ -120,7 +85,6 @@ const lipPoses = {
   O: {viseme_O: 1, jawOpen: 0.42, mouthFunnel: 0.8, mouthPucker: 0.45},
   I: {viseme_I: 1, jawOpen: 0.16, mouthSmileLeft: 0.7, mouthSmileRight: 0.7, mouthStretchLeft: 0.35, mouthStretchRight: 0.35},
 };
-const lipKeys = ['viseme_PP', 'viseme_aa', 'viseme_O', 'viseme_I', 'jawOpen', 'mouthClose', 'mouthOpen', 'mouthFunnel', 'mouthPucker', 'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight'];
 const lipLabels = {
   viseme_PP: 'Смыкание М',
   viseme_aa: 'Открытое А',
@@ -261,10 +225,14 @@ const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {
   }, 80);
 });
 
+const lipPoseNow = () => Object.fromEntries(
+  Object.entries(lipPoses).map(([name, pose]) => [name, {...pose, ...(lipValues[name] || {})}]),
+);
+
 const playClip = async (doll, clip, fromCache) => {
   await doll.audioCtx.resume();
   if (selectedLip) releaseLipFixed(doll);
-  const frames = mouthFrames(clip.audio);
+  const frames = speechMouth(clip.audio, clip.alignment, lipPoseNow());
   doll.speakAudio({
     audio: clip.audio,
     anim: {name: 'blendshapes', dt: frames.dt, vs: frames.vs},
@@ -285,10 +253,17 @@ const loadClip = async (phrase) => {
     setState(await readError(response), true);
     return null;
   }
-  const bytes = await response.arrayBuffer();
+  const payload = await response.json();
+  if (!payload.audio_base64) {
+    setState('Сервер не отдал звук.', true);
+    return null;
+  }
+  const binary = atob(payload.audio_base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   const doll = await ensureHead();
-  const audio = await doll.audioCtx.decodeAudioData(bytes.slice(0));
-  cachedClip = {phrase, audio};
+  const audio = await doll.audioCtx.decodeAudioData(bytes.buffer.slice(0));
+  cachedClip = {phrase, audio, alignment: payload.alignment || null};
   return cachedClip;
 };
 

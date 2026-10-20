@@ -156,12 +156,37 @@ const ttsError = (status) => {
   return {code: 'TTS_PROVIDER_ERROR', message: 'ElevenLabs не отдал звук.'};
 };
 
+const alignmentOf = (payload) => {
+  const source = payload?.normalized_alignment?.characters?.length
+    ? payload.normalized_alignment
+    : payload?.alignment;
+  if (!source?.characters?.length) return null;
+  const count = Math.min(
+    source.characters.length,
+    source.character_start_times_seconds?.length || 0,
+    source.character_end_times_seconds?.length || 0,
+  );
+  const characters = [];
+  const character_start_times_seconds = [];
+  const character_end_times_seconds = [];
+  for (let i = 0; i < count; i += 1) {
+    const character = String(source.characters[i] ?? '');
+    const start = Number(source.character_start_times_seconds[i]);
+    const end = Number(source.character_end_times_seconds[i]);
+    if (!character || !Number.isFinite(start) || !Number.isFinite(end) || end < start) continue;
+    characters.push(character);
+    character_start_times_seconds.push(start);
+    character_end_times_seconds.push(end);
+  }
+  return characters.length ? {characters, character_start_times_seconds, character_end_times_seconds} : null;
+};
+
 const synthesize = async (text) => {
-  const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
+  const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps`, {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
-      accept: 'audio/mpeg',
+      accept: 'application/json',
       'content-type': 'application/json',
     },
     body: JSON.stringify({text, model_id: modelId}),
@@ -173,14 +198,15 @@ const synthesize = async (text) => {
     console.error(JSON.stringify({event: 'speak.failed', code: error.code, status: upstream.status, text_length: text.length}));
     throw Object.assign(new Error(error.message), {status: 502, body: {error}});
   }
-  const audio = Buffer.from(await upstream.arrayBuffer());
+  const payload = JSON.parse(Buffer.from(await upstream.arrayBuffer()).toString('utf8'));
+  const audio = Buffer.from(String(payload.audio_base64 || ''), 'base64');
   if (!audio.length || audio.length > 15_000_000) {
     throw Object.assign(new Error('bad audio'), {
       status: 502,
       body: {error: {code: 'TTS_AUDIO_INVALID', message: 'Звук от ElevenLabs пустой или слишком большой.'}},
     });
   }
-  return audio;
+  return {audio_base64: payload.audio_base64, alignment: alignmentOf(payload), bytes: audio.length};
 };
 
 const server = createServer(async (request, response) => {
@@ -267,15 +293,9 @@ const server = createServer(async (request, response) => {
       speaking = true;
       const started = Date.now();
       try {
-        const audio = await synthesize(text);
-        console.log(JSON.stringify({event: 'speak.completed', text_length: text.length, duration_ms: Date.now() - started, bytes: audio.length}));
-        response.writeHead(200, {
-          'content-type': 'audio/mpeg',
-          'content-length': audio.length,
-          'cache-control': 'no-store',
-          'x-content-type-options': 'nosniff',
-        });
-        response.end(audio);
+        const spoken = await synthesize(text);
+        console.log(JSON.stringify({event: 'speak.completed', text_length: text.length, duration_ms: Date.now() - started, bytes: spoken.bytes, letters: spoken.alignment?.characters?.length || 0}));
+        sendJson(response, 200, {audio_base64: spoken.audio_base64, alignment: spoken.alignment});
       } finally {
         speaking = false;
       }

@@ -2453,19 +2453,8 @@ class TalkingHead {
               m.ref = x.vs;
             }
 
-            // Volume effect
-            if ( vol ) {
-              switch(mt){
-                case 'viseme_aa':
-                case 'viseme_E':
-                case 'viseme_I':
-                case 'viseme_O':
-                case 'viseme_U':
-                  m.newvalue *= 1 + vol / 255 - 0.5;
-              }
-            }
-
-            // Update
+            // The page writes the slider amount into these visemes. A second
+            // loudness scale made that amount quieter than the same shape alone.
             m.needsUpdate = true;
 
           } else if ( mt === 'eyeContact' && vs[j] !== null && isEyeContact !== false ) {
