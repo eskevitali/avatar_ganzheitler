@@ -16,8 +16,8 @@ const setState = (message, isError = false) => {
 };
 
 const showLogin = () => {
-  login.hidden = false;
-  studio.hidden = true;
+  if (login) login.hidden = false;
+  if (studio) studio.hidden = true;
 };
 
 const markPressed = (selector, value, attr) => {
@@ -96,8 +96,8 @@ const ensureHead = async () => {
 };
 
 const showStudio = (session) => {
-  login.hidden = true;
-  studio.hidden = false;
+  if (login) login.hidden = true;
+  if (studio) studio.hidden = false;
   if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
   ensureHead().catch(() => {});
 };
@@ -136,7 +136,9 @@ const readError = async (response) => {
   }
 };
 
-document.querySelector('#logout').addEventListener('click', async () => {
+if (!login) document.querySelector('#logout')?.remove();
+
+document.querySelector('#logout')?.addEventListener('click', async () => {
   await fetch('/api/logout', {method: 'POST'});
   showLogin();
 });
