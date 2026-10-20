@@ -121,38 +121,118 @@ const lipPoses = {
   I: {viseme_I: 1, jawOpen: 0.16, mouthSmileLeft: 0.7, mouthSmileRight: 0.7, mouthStretchLeft: 0.35, mouthStretchRight: 0.35},
 };
 const lipKeys = ['viseme_PP', 'viseme_aa', 'viseme_O', 'viseme_I', 'jawOpen', 'mouthClose', 'mouthOpen', 'mouthFunnel', 'mouthPucker', 'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight'];
-let lipToken = 0;
+const lipLabels = {
+  viseme_PP: 'Смыкание М',
+  viseme_aa: 'Открытое А',
+  viseme_O: 'Круглое О',
+  viseme_I: 'Узкое И',
+  jawOpen: 'Челюсть',
+  mouthClose: 'Закрытие',
+  mouthOpen: 'Раскрытие',
+  mouthFunnel: 'Воронка',
+  mouthPucker: 'Трубочка',
+  mouthSmileLeft: 'Улыбка слева',
+  mouthSmileRight: 'Улыбка справа',
+  mouthStretchLeft: 'Растяжение слева',
+  mouthStretchRight: 'Растяжение справа',
+};
+const lipTune = document.querySelector('#lip-tune');
+const lipSliders = document.querySelector('#lip-sliders');
+const lipTitle = document.querySelector('#lip-tune-title');
+const lipValues = {};
+let selectedLip = null;
+
+const lipLetter = (name) => document.querySelector(`[data-viseme="${name}"]`)?.textContent.trim() || '';
+
+const pinMorph = (doll, key, value) => {
+  doll.setFixedValue(key, value);
+  const entry = doll.mtAvatar?.[key];
+  if (!entry || value === null) return;
+  const applied = Math.min(entry.max ?? 1, Math.max(entry.min ?? 0, value));
+  entry.value = applied;
+  entry.applied = applied;
+  entry.v = 0;
+  if (entry.ms) {
+    for (let i = 0; i < entry.ms.length; i += 1) entry.ms[i][entry.is[i]] = applied;
+  }
+};
+
+const applyLipFixed = (doll, name) => {
+  const values = lipValues[name] || {};
+  for (const key of lipKeys) pinMorph(doll, key, values[key] ?? 0);
+};
+
+const releaseLipFixed = (doll) => {
+  if (!doll) return;
+  for (const key of lipKeys) doll.setFixedValue(key, null);
+};
+
+const setLipLocked = (locked) => {
+  for (const input of lipSliders.querySelectorAll('input')) input.disabled = locked;
+};
+
+const renderSliders = (name) => {
+  lipSliders.replaceChildren();
+  for (const [key, value] of Object.entries(lipValues[name])) {
+    const row = document.createElement('label');
+    row.className = 'slider';
+    const caption = document.createElement('span');
+    caption.textContent = lipLabels[key] || key;
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = '0';
+    input.max = '100';
+    input.step = '1';
+    input.value = String(Math.round(value * 100));
+    input.setAttribute('aria-label', lipLabels[key] || key);
+    const output = document.createElement('output');
+    output.textContent = input.value;
+    input.addEventListener('input', () => {
+      if (!head || playing || selectedLip !== name) return;
+      const next = Number(input.value) / 100;
+      lipValues[name][key] = next;
+      output.textContent = input.value;
+      pinMorph(head, key, next);
+    });
+    row.append(caption, input, output);
+    lipSliders.append(row);
+  }
+};
+
+const clearLip = (doll) => {
+  selectedLip = null;
+  releaseLipFixed(doll || head);
+  markPressed('[data-viseme]', '', 'viseme');
+  lipTune.hidden = true;
+  lipSliders.replaceChildren();
+  if (!playing) setState('Покой');
+};
+
+const selectLip = async (name) => {
+  const doll = await ensureHead();
+  if (playing) {
+    setState('Губы заняты речью. Остановите повтор.');
+    return;
+  }
+  if (selectedLip === name) {
+    clearLip(doll);
+    return;
+  }
+  if (!lipValues[name]) lipValues[name] = {...lipPoses[name]};
+  selectedLip = name;
+  applyLipFixed(doll, name);
+  markPressed('[data-viseme]', name, 'viseme');
+  lipTitle.textContent = `Форма «${lipLetter(name)}»`;
+  renderSliders(name);
+  lipTune.hidden = false;
+  setState(`Форма «${lipLetter(name)}»`);
+};
 
 for (const button of document.querySelectorAll('[data-viseme]')) {
-  button.addEventListener('click', async () => {
-    const doll = await ensureHead();
-    if (playing) {
-      setState('Губы заняты речью. Остановите повтор.', true);
-      return;
-    }
-    if (doll.audioCtx) doll.audioCtx.resume();
-    const pose = lipPoses[button.dataset.viseme];
-    const vs = {};
-    for (const key of lipKeys) {
-      const peak = pose[key] || 0;
-      vs[key] = [0, peak, peak, 0];
-    }
-    const seconds = 1.1;
-    const buffer = doll.audioCtx.createBuffer(1, Math.ceil(doll.audioCtx.sampleRate * seconds), doll.audioCtx.sampleRate);
-    const token = ++lipToken;
-    markPressed('[data-viseme]', button.dataset.viseme, 'viseme');
-    setState(button.textContent.trim());
-    doll.speakAudio({
-      audio: buffer,
-      anim: {name: 'blendshapes', dt: [80, 700, 220], vs},
-    }, {isRaw: true});
-    window.setTimeout(() => {
-      if (token !== lipToken || playing) return;
-      markPressed('[data-viseme]', '', 'viseme');
-      setState('Покой');
-    }, 1100);
-  });
+  button.addEventListener('click', () => selectLip(button.dataset.viseme));
 }
+
+document.querySelector('#lip-reset').addEventListener('click', () => clearLip(head));
 
 const readError = async (response) => {
   try {
@@ -183,6 +263,7 @@ const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {
 
 const playClip = async (doll, clip, fromCache) => {
   await doll.audioCtx.resume();
+  if (selectedLip) releaseLipFixed(doll);
   const frames = mouthFrames(clip.audio);
   doll.speakAudio({
     audio: clip.audio,
@@ -215,6 +296,7 @@ const speakPhrase = async (phrase) => {
   if (!phrase || playing) return;
   speakButton.disabled = true;
   playing = true;
+  setLipLocked(true);
   try {
     const doll = await ensureHead();
     const fromCache = Boolean(cachedClip && cachedClip.phrase === phrase);
@@ -223,12 +305,14 @@ const speakPhrase = async (phrase) => {
     do {
       await playClip(doll, clip, fromCache || repeatOn);
     } while (repeatOn && cachedClip === clip);
-    setState('Покой');
   } catch (error) {
     setState(error?.name === 'EncodingError' ? 'Браузер не смог проиграть звук.' : 'Не удалось произнести фразу.', true);
   } finally {
     playing = false;
     speakButton.disabled = false;
+    setLipLocked(false);
+    if (selectedLip && head) applyLipFixed(head, selectedLip);
+    if (!state.classList.contains('error')) setState(selectedLip ? `Форма «${lipLetter(selectedLip)}»` : 'Покой');
   }
 };
 
