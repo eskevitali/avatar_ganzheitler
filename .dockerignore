@@ -1,0 +1,6 @@
+.git
+secrets
+.env
+.env.*
+*.log
+README.md

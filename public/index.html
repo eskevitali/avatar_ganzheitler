@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Avatar</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <section id="login" class="card" hidden>
+      <h1>Avatar</h1>
+      <p>Вход в пробную страницу.</p>
+      <form id="login-form">
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit">Войти</button>
+        <p id="login-error" class="status" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="studio" hidden>
+      <canvas id="face" width="1262" height="1246" aria-label="Аватар"></canvas>
+      <form id="speak-form" class="card">
+        <label for="text">Текст</label>
+        <textarea id="text" name="text" rows="4" maxlength="4000" placeholder="Напишите фразу, которую аватар произнесёт" required></textarea>
+        <div class="row">
+          <button id="speak" type="submit">Сказать</button>
+          <button id="logout" class="ghost" type="button">Выйти</button>
+        </div>
+        <p id="state" class="status" role="status">Покой</p>
+      </form>
+    </section>
+  </main>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
