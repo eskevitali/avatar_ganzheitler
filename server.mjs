@@ -99,8 +99,14 @@ const readBody = (request, limit = 32_000) => new Promise((resolve, reject) => {
   });
   request.on('end', () => {
     const raw = Buffer.concat(chunks).toString('utf8');
+    const type = String(request.headers['content-type'] || '');
     if (!raw) {
       resolve({});
+      return;
+    }
+    if (type.includes('application/x-www-form-urlencoded')) {
+      const params = new URLSearchParams(raw);
+      resolve({password: params.get('password') || ''});
       return;
     }
     try {
@@ -185,18 +191,41 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname === '/api/login' && request.method === 'POST') {
+      const formPost = String(request.headers['content-type'] || '').includes('application/x-www-form-urlencoded');
+      const redirect = (location, headers = {}) => {
+        response.writeHead(303, {
+          location,
+          'cache-control': 'no-store',
+          'referrer-policy': 'no-referrer',
+          ...headers,
+        });
+        response.end();
+      };
       if (!loginAllowed()) {
+        if (formPost) {
+          redirect('/?login=wait');
+          return;
+        }
         sendJson(response, 429, {error: {message: 'Слишком много попыток. Подождите десять минут.'}});
         return;
       }
       const body = await readBody(request);
       if (!passwordsMatch(body.password || '')) {
         loginFailures.push(Date.now());
+        if (formPost) {
+          redirect('/?login=denied');
+          return;
+        }
         sendJson(response, 401, {error: {message: 'Пароль не подошёл.'}});
         return;
       }
       const token = sign({exp: Date.now() + sessionMs, nonce: randomBytes(8).toString('hex')});
-      sendJson(response, 200, {ok: true, tts: ttsState()}, {'set-cookie': cookie(token, Math.floor(sessionMs / 1000))});
+      const sessionCookie = cookie(token, Math.floor(sessionMs / 1000));
+      if (formPost) {
+        redirect('/', {'set-cookie': sessionCookie});
+        return;
+      }
+      sendJson(response, 200, {ok: true, tts: ttsState()}, {'set-cookie': sessionCookie});
       return;
     }
 
@@ -267,7 +296,45 @@ const server = createServer(async (request, response) => {
       sendJson(response, 404, {error: {message: 'Не найдено.'}});
       return;
     }
+    if (request.method === 'GET' && url.pathname === '/' && url.searchParams.has('password')) {
+      response.writeHead(303, {
+        location: '/',
+        'cache-control': 'no-store',
+        'referrer-policy': 'no-referrer',
+      });
+      response.end();
+      return;
+    }
+
     const ext = path.extname(file);
+    if (request.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
+      let html = await readFile(file, 'utf8');
+      const notice = url.searchParams.get('login');
+      if (notice === 'denied' || notice === 'wait') {
+        const message = notice === 'denied'
+          ? 'Пароль не подошёл.'
+          : 'Слишком много попыток. Подождите десять минут.';
+        html = html.replace(
+          '<p id="login-error" class="status" role="alert"></p>',
+          `<p id="login-error" class="status error" role="alert">${message}</p>`,
+        );
+      }
+      if (session) {
+        html = html.replace('id="login" class="card"', 'id="login" class="card" hidden');
+        html = html.replace('<section id="studio" hidden>', '<section id="studio">');
+      }
+      const page = Buffer.from(html);
+      response.writeHead(200, {
+        'content-type': 'text/html; charset=utf-8',
+        'content-length': page.length,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+        'content-security-policy': "default-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' blob:; media-src 'self' blob:; worker-src 'self' blob:",
+      });
+      response.end(page);
+      return;
+    }
     response.writeHead(200, {
       'content-type': types[ext] || 'application/octet-stream',
       'content-length': info.size,

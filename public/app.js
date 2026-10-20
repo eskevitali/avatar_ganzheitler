@@ -1,7 +1,5 @@
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
-const loginForm = document.querySelector('#login-form');
-const loginError = document.querySelector('#login-error');
 const speakForm = document.querySelector('#speak-form');
 const text = document.querySelector('#text');
 const speakButton = document.querySelector('#speak');
@@ -137,21 +135,6 @@ const readError = async (response) => {
     return 'Не вышло.';
   }
 };
-
-loginForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  loginError.textContent = '';
-  const response = await fetch('/api/login', {
-    method: 'POST',
-    headers: {'content-type': 'application/json'},
-    body: JSON.stringify({password: new FormData(loginForm).get('password')}),
-  });
-  if (!response.ok) {
-    loginError.textContent = await readError(response);
-    return;
-  }
-  showStudio(await response.json());
-});
 
 document.querySelector('#logout').addEventListener('click', async () => {
   await fetch('/api/logout', {method: 'POST'});
