@@ -3,12 +3,15 @@ const studio = document.querySelector('#studio');
 const speakForm = document.querySelector('#speak-form');
 const text = document.querySelector('#text');
 const speakButton = document.querySelector('#speak');
+const repeatButton = document.querySelector('#repeat');
 const state = document.querySelector('#state');
 const dollNode = document.querySelector('#doll');
 
 let head = null;
 let booting = null;
 let playing = false;
+let repeatOn = false;
+let cachedClip = null;
 
 const setState = (message, isError = false) => {
   state.textContent = message;
@@ -156,34 +159,48 @@ const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {
   }, 80);
 });
 
-speakForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const phrase = text.value.trim();
+const playClip = async (doll, clip, fromCache) => {
+  await doll.audioCtx.resume();
+  const frames = mouthFrames(clip.audio);
+  doll.speakAudio({
+    audio: clip.audio,
+    anim: {name: 'blendshapes', dt: frames.dt, vs: frames.vs},
+  }, {isRaw: true});
+  setState(repeatOn ? 'Повтор' : fromCache ? 'Ещё раз, без генерации' : 'Говорит');
+  await waitUntilQuiet(doll, clip.audio.duration * 1000);
+};
+
+const loadClip = async (phrase) => {
+  if (cachedClip && cachedClip.phrase === phrase) return cachedClip;
+  setState('Готовлю голос…');
+  const response = await fetch('/api/speak', {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({text: phrase}),
+  });
+  if (!response.ok) {
+    setState(await readError(response), true);
+    return null;
+  }
+  const bytes = await response.arrayBuffer();
+  const doll = await ensureHead();
+  const audio = await doll.audioCtx.decodeAudioData(bytes.slice(0));
+  cachedClip = {phrase, audio};
+  return cachedClip;
+};
+
+const speakPhrase = async (phrase) => {
   if (!phrase || playing) return;
   speakButton.disabled = true;
   playing = true;
-  setState('Готовлю голос…');
   try {
     const doll = await ensureHead();
-    const response = await fetch('/api/speak', {
-      method: 'POST',
-      headers: {'content-type': 'application/json'},
-      body: JSON.stringify({text: phrase}),
-    });
-    if (!response.ok) {
-      setState(await readError(response), true);
-      return;
-    }
-    const bytes = await response.arrayBuffer();
-    await doll.audioCtx.resume();
-    const decoded = await doll.audioCtx.decodeAudioData(bytes.slice(0));
-    const frames = mouthFrames(decoded);
-    doll.speakAudio({
-      audio: decoded,
-      anim: {name: 'blendshapes', dt: frames.dt, vs: frames.vs},
-    }, {isRaw: true});
-    setState('Говорит');
-    await waitUntilQuiet(doll, decoded.duration * 1000);
+    const fromCache = Boolean(cachedClip && cachedClip.phrase === phrase);
+    const clip = await loadClip(phrase);
+    if (!clip) return;
+    do {
+      await playClip(doll, clip, fromCache || repeatOn);
+    } while (repeatOn && cachedClip === clip);
     setState('Покой');
   } catch (error) {
     setState(error?.name === 'EncodingError' ? 'Браузер не смог проиграть звук.' : 'Не удалось произнести фразу.', true);
@@ -191,6 +208,32 @@ speakForm.addEventListener('submit', async (event) => {
     playing = false;
     speakButton.disabled = false;
   }
+};
+
+repeatButton.addEventListener('click', () => {
+  if (head?.audioCtx) head.audioCtx.resume();
+  repeatOn = !repeatOn;
+  repeatButton.setAttribute('aria-pressed', repeatOn ? 'true' : 'false');
+  if (!repeatOn) {
+    if (!playing) setState('Покой');
+    return;
+  }
+  const phrase = text.value.trim();
+  if (cachedClip && (!phrase || cachedClip.phrase === phrase)) {
+    speakPhrase(cachedClip.phrase);
+    return;
+  }
+  if (!phrase) {
+    setState('Сначала напишите фразу и нажмите «Сказать».');
+    return;
+  }
+  setState('Повтор включён. Новая фраза сгенерируется один раз.');
+});
+
+speakForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (head?.audioCtx) head.audioCtx.resume();
+  await speakPhrase(text.value.trim());
 });
 
 const boot = async () => {

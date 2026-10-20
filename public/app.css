@@ -60,6 +60,11 @@ button.ghost {
 }
 .row { display: flex; gap: 10px; }
 .row button { flex: 1; }
+.row button[aria-pressed="true"] {
+  color: #111318;
+  background: var(--accent);
+  border-color: var(--accent);
+}
 #doll {
   width: min(100%, 560px);
   height: min(72vh, 680px);
