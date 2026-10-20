@@ -139,11 +139,9 @@ const readError = async (response) => {
   }
 };
 
-if (!login) document.querySelector('#logout')?.remove();
-
 document.querySelector('#logout')?.addEventListener('click', async () => {
   await fetch('/api/logout', {method: 'POST'});
-  showLogin();
+  location.assign('/');
 });
 
 const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {

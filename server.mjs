@@ -15,7 +15,7 @@ const voiceId = process.env.ELEVENLABS_VOICE_ID || '';
 const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
 const maxText = 4000;
 const sessionMs = 12 * 60 * 60 * 1000;
-const loginRequired = false;
+const loginRequired = true;
 
 if (!password || !secret) {
   console.error('APP_PASSWORD and APP_SECRET are required');
@@ -44,7 +44,6 @@ const sign = (payload) => {
 };
 
 const readSession = (cookieHeader) => {
-  if (!loginRequired) return {exp: Date.now() + sessionMs, open: true};
   const raw = String(cookieHeader || '')
     .split(';')
     .map((part) => part.trim())
@@ -324,12 +323,6 @@ const server = createServer(async (request, response) => {
       if (session) {
         html = html.replace(/<!-- login:start -->[\s\S]*<!-- login:end -->/, '');
         html = html.replace('<section id="studio" hidden>', '<section id="studio">');
-        if (!loginRequired) {
-          html = html.replace(
-            'Учебная кукла. Свою маску подключим отдельно.',
-            'Вход по паролю временно выключен. Учебная кукла. Свою маску подключим отдельно.',
-          );
-        }
       }
       const page = Buffer.from(html);
       response.writeHead(200, {
