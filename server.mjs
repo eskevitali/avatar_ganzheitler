@@ -1,6 +1,6 @@
 import {createHmac, randomBytes, timingSafeEqual} from 'node:crypto';
 import {createReadStream, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
-import {stat} from 'node:fs/promises';
+import {readFile, stat} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
