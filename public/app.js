@@ -1,5 +1,3 @@
-import { TalkingHead } from './vendor/talkinghead.mjs';
-
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
 const loginForm = document.querySelector('#login-form');
@@ -72,6 +70,7 @@ const ensureHead = async () => {
   if (booting) return booting;
   booting = (async () => {
     setState('Загружаю куклу…');
+    const {TalkingHead} = await import('./vendor/talkinghead.mjs');
     const doll = new TalkingHead(dollNode, {
       lipsyncModules: ['en'],
       lipsyncLang: 'en',

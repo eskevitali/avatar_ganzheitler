@@ -113,7 +113,7 @@ const readBody = (request, limit = 32_000) => new Promise((resolve, reject) => {
 });
 
 const passwordsMatch = (input) => {
-  const left = Buffer.from(String(input));
+  const left = Buffer.from(String(input).trim());
   const right = Buffer.from(password);
   if (left.length !== right.length) {
     timingSafeEqual(right, right);
@@ -281,10 +281,11 @@ const server = createServer(async (request, response) => {
     }
     createReadStream(file).pipe(response);
   } catch (error) {
-    const status = error.status || 500;
-    if (status >= 500) console.error(JSON.stringify({event: 'request.failed', status, name: error.name}));
+    const status = error.code === 'ENOENT' ? 404 : (error.status || 500);
+    if (status >= 500) console.error(JSON.stringify({event: 'request.failed', status, name: error.name, code: error.code || ''}));
     if (!response.headersSent) {
-      sendJson(response, status, error.body || {error: {message: status === 400 ? 'Не понял запрос.' : 'Ошибка сервера.'}});
+      const message = status === 400 ? 'Не понял запрос.' : status === 404 ? 'Не найдено.' : 'Ошибка сервера.';
+      sendJson(response, status, error.body || {error: {message}});
     }
   }
 });
