@@ -59,12 +59,16 @@ button.ghost {
 }
 .row { display: flex; gap: 10px; }
 .row button { flex: 1; }
-canvas {
-  display: block;
+#doll {
   width: min(100%, 560px);
-  height: auto;
-  margin: 0 auto 16px;
+  height: min(72vh, 680px);
+  margin: 0 auto 8px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #10141c;
 }
+#doll canvas { width: 100%; height: 100%; display: block; }
+.hint { margin: 0 0 16px; color: var(--muted); text-align: center; }
 .status { min-height: 1.4em; color: var(--muted); }
 .status.error { color: var(--danger); }
 .controls { margin-bottom: 16px; }

@@ -1,4 +1,4 @@
-import {createFace, lipShape} from './face.js';
+import { TalkingHead } from './vendor/talkinghead.mjs';
 
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
@@ -8,42 +8,11 @@ const speakForm = document.querySelector('#speak-form');
 const text = document.querySelector('#text');
 const speakButton = document.querySelector('#speak');
 const state = document.querySelector('#state');
-const canvas = document.querySelector('#face');
-const mouthSlider = document.querySelector('#mouth');
-let face = null;
+const dollNode = document.querySelector('#doll');
 
-const expressions = {
-  calm: {smile: 0, sad: 0, surprise: 0, stern: 0},
-  smile: {smile: 1, sad: 0, surprise: 0, stern: 0},
-  sad: {smile: 0, sad: 1, surprise: 0, stern: 0},
-  surprise: {smile: 0, sad: 0, surprise: 1, stern: 0},
-  stern: {smile: 0, sad: 0, surprise: 0, stern: 1},
-};
-
-let expression = 'calm';
-let lip = 'auto';
-let manualOpen = 0;
-let audioOpen = 0;
-let audioRound = 0.25;
-let audioContext;
-let analyser;
-let wave;
-let spectrum;
+let head = null;
+let booting = null;
 let playing = false;
-
-const image = new Image();
-image.src = '/avatar.png';
-image.addEventListener('load', () => {
-  canvas.width = image.naturalWidth;
-  canvas.height = image.naturalHeight;
-  try {
-    face = createFace(canvas);
-    face?.setImage(image);
-  } catch (error) {
-    console.error(error);
-    setState('Лицо не собралось в этом браузере.', true);
-  }
-});
 
 const setState = (message, isError = false) => {
   state.textContent = message;
@@ -55,85 +24,111 @@ const showLogin = () => {
   studio.hidden = true;
 };
 
-const showStudio = (session) => {
-  login.hidden = true;
-  studio.hidden = false;
-  if (!face) {
-    setState('В этом браузере нет WebGL, лицо показано без мимики.', true);
-    return;
-  }
-  if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
-  else setState('Покой');
-};
-
 const markPressed = (selector, value, attr) => {
   for (const button of document.querySelectorAll(selector)) {
     button.setAttribute('aria-pressed', button.dataset[attr] === value ? 'true' : 'false');
   }
 };
 
-const readVoice = () => {
-  if (!playing || !analyser) return;
-  analyser.getByteTimeDomainData(wave);
-  let energy = 0;
-  for (const sample of wave) {
-    const centered = (sample - 128) / 128;
-    energy += centered * centered;
+const mouthFrames = (buffer) => {
+  const channel = buffer.getChannelData(0);
+  const frame = Math.max(1, Math.round(buffer.sampleRate / 30));
+  const dt = [];
+  const jawOpen = [];
+  const mouthFunnel = [];
+  const mouthSmile = [];
+  for (let i = 0; i < channel.length; i += frame) {
+    const end = Math.min(channel.length, i + frame);
+    let energy = 0;
+    let signChanges = 0;
+    let previous = 0;
+    for (let j = i; j < end; j += 1) {
+      const sample = channel[j];
+      energy += sample * sample;
+      if (j > i && ((sample >= 0 && previous < 0) || (sample < 0 && previous >= 0))) signChanges += 1;
+      previous = sample;
+    }
+    const rms = Math.sqrt(energy / (end - i));
+    const open = Math.min(1, Math.max(0, (rms - 0.015) / 0.11)) ** 0.65;
+    const bright = signChanges / (end - i);
+    dt.push(1000 / 30);
+    jawOpen.push(open);
+    mouthFunnel.push(open * (bright < 0.08 ? 0.45 : 0.12));
+    mouthSmile.push(open * (bright > 0.14 ? 0.35 : 0));
   }
-  const level = Math.sqrt(energy / wave.length);
-  audioOpen = Math.min(1, Math.max(0, (level - 0.015) / 0.16)) ** 0.7;
-  analyser.getByteFrequencyData(spectrum);
-  let weight = 0;
-  let mass = 0;
-  for (let i = 0; i < spectrum.length; i += 1) {
-    weight += i * spectrum[i];
-    mass += spectrum[i];
-  }
-  const centroid = mass ? weight / mass / spectrum.length : 0.4;
-  audioRound = Math.min(1, Math.max(0, (0.55 - centroid) / 0.4));
+  return {
+    dt,
+    vs: {
+      jawOpen,
+      mouthFunnel,
+      mouthSmileLeft: mouthSmile,
+      mouthSmileRight: mouthSmile,
+    },
+  };
 };
 
-const frame = (now) => {
-  readVoice();
-  const mood = expressions[expression];
-  const shaped = lip === 'auto' ? null : lip === 'custom' ? {open: manualOpen, round: manualOpen > 0.55 ? 0.25 : 0.65} : lipShape[lip];
-  let open = shaped ? Math.min(1, shaped.open + audioOpen * 0.3) : audioOpen;
-  let round = shaped ? shaped.round : audioRound;
-  if (expression === 'surprise') {
-    open = Math.max(open, 0.62);
-    round = Math.max(round, 0.8);
+const ensureHead = async () => {
+  if (head) return head;
+  if (booting) return booting;
+  booting = (async () => {
+    setState('Загружаю куклу…');
+    const doll = new TalkingHead(dollNode, {
+      lipsyncModules: ['en'],
+      lipsyncLang: 'en',
+      cameraView: 'head',
+      modelPixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    });
+    await doll.showAvatar({
+      url: '/dolls/brunette.glb',
+      body: 'F',
+      avatarMood: 'neutral',
+      lipsyncLang: 'en',
+    });
+    doll.setView('head');
+    head = doll;
+    setState('Покой');
+    return doll;
+  })();
+  try {
+    return await booting;
+  } catch (error) {
+    booting = null;
+    setState('Кукла не загрузилась.', true);
+    throw error;
   }
-  if (expression === 'smile') open = Math.max(open, 0.18);
-  face?.setTarget({...mood, open, round});
-  face?.frame(now);
-  requestAnimationFrame(frame);
 };
-requestAnimationFrame(frame);
 
-for (const button of document.querySelectorAll('[data-expression]')) {
-  button.addEventListener('click', () => {
-    expression = button.dataset.expression;
-    markPressed('[data-expression]', expression, 'expression');
+const showStudio = (session) => {
+  login.hidden = true;
+  studio.hidden = false;
+  if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
+  ensureHead().catch(() => {});
+};
+
+for (const button of document.querySelectorAll('[data-mood]')) {
+  button.addEventListener('click', async () => {
+    const doll = await ensureHead();
+    doll.setMood(button.dataset.mood);
+    markPressed('[data-mood]', button.dataset.mood, 'mood');
     if (!playing) setState(button.textContent);
   });
 }
 
-for (const button of document.querySelectorAll('[data-lip]')) {
-  button.addEventListener('click', () => {
-    lip = button.dataset.lip;
-    markPressed('[data-lip]', lip, 'lip');
-    if (lip !== 'auto') {
-      manualOpen = lipShape[lip].open;
-      mouthSlider.value = String(Math.round(manualOpen * 100));
-    }
+for (const button of document.querySelectorAll('[data-viseme]')) {
+  button.addEventListener('click', async () => {
+    const doll = await ensureHead();
+    if (playing || doll.isSpeaking) return;
+    await doll.audioCtx.resume();
+    const seconds = 0.45;
+    const buffer = doll.audioCtx.createBuffer(1, Math.ceil(doll.audioCtx.sampleRate * seconds), doll.audioCtx.sampleRate);
+    doll.speakAudio({
+      audio: buffer,
+      visemes: [button.dataset.viseme],
+      vtimes: [40],
+      vdurations: [320],
+    }, {isRaw: true});
   });
 }
-
-mouthSlider.addEventListener('input', () => {
-  lip = 'custom';
-  manualOpen = Number(mouthSlider.value) / 100;
-  markPressed('[data-lip]', lip, 'lip');
-});
 
 const readError = async (response) => {
   try {
@@ -164,13 +159,28 @@ document.querySelector('#logout').addEventListener('click', async () => {
   showLogin();
 });
 
+const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {
+  const timeout = setTimeout(resolve, duration + 1200);
+  let heard = false;
+  const timer = setInterval(() => {
+    if (doll.isSpeaking || doll.isAudioPlaying) heard = true;
+    if (heard && !doll.isSpeaking && !doll.isAudioPlaying) {
+      clearInterval(timer);
+      clearTimeout(timeout);
+      resolve();
+    }
+  }, 80);
+});
+
 speakForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const phrase = text.value.trim();
   if (!phrase || playing) return;
   speakButton.disabled = true;
+  playing = true;
   setState('Готовлю голос…');
   try {
+    const doll = await ensureHead();
     const response = await fetch('/api/speak', {
       method: 'POST',
       headers: {'content-type': 'application/json'},
@@ -181,31 +191,20 @@ speakForm.addEventListener('submit', async (event) => {
       return;
     }
     const bytes = await response.arrayBuffer();
-    audioContext ||= new AudioContext();
-    if (audioContext.state === 'suspended') await audioContext.resume();
-    const decoded = await audioContext.decodeAudioData(bytes.slice(0));
-    analyser ||= audioContext.createAnalyser();
-    analyser.fftSize = 1024;
-    wave = new Uint8Array(analyser.fftSize);
-    spectrum = new Uint8Array(analyser.frequencyBinCount);
-    const source = audioContext.createBufferSource();
-    source.buffer = decoded;
-    source.connect(analyser);
-    analyser.connect(audioContext.destination);
-    playing = true;
+    await doll.audioCtx.resume();
+    const decoded = await doll.audioCtx.decodeAudioData(bytes.slice(0));
+    const frames = mouthFrames(decoded);
+    doll.speakAudio({
+      audio: decoded,
+      anim: {name: 'blendshapes', dt: frames.dt, vs: frames.vs},
+    }, {isRaw: true});
     setState('Говорит');
-    await new Promise((resolve) => {
-      source.onended = resolve;
-      source.start();
-    });
-    playing = false;
-    audioOpen = 0;
+    await waitUntilQuiet(doll, decoded.duration * 1000);
     setState('Покой');
   } catch (error) {
-    playing = false;
-    audioOpen = 0;
     setState(error?.name === 'EncodingError' ? 'Браузер не смог проиграть звук.' : 'Не удалось произнести фразу.', true);
   } finally {
+    playing = false;
     speakButton.disabled = false;
   }
 });

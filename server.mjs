@@ -27,6 +27,8 @@ const types = {
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.glb': 'model/gltf-binary',
+  '.mjs': 'text/javascript; charset=utf-8',
 };
 
 let speaking = false;
@@ -271,7 +273,7 @@ const server = createServer(async (request, response) => {
       'content-length': info.size,
       'cache-control': ext === '.png' ? 'public, max-age=3600' : 'no-store',
       'x-content-type-options': 'nosniff',
-      'content-security-policy': "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self'",
+      'content-security-policy': "default-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' blob:; media-src 'self' blob:; worker-src 'self' blob:",
     });
     if (request.method === 'HEAD') {
       response.end();
