@@ -8,6 +8,8 @@ services:
     restart: unless-stopped
     env_file:
       - /opt/avatarnode/secrets/app.env
+    volumes:
+      - /opt/avatarnode/settings:/data/settings
     networks:
       - web
     healthcheck:

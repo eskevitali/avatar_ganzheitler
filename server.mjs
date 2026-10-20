@@ -1,6 +1,6 @@
 import {createHmac, randomBytes, timingSafeEqual} from 'node:crypto';
-import {createReadStream} from 'node:fs';
-import {readFile, stat} from 'node:fs/promises';
+import {createReadStream, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {stat} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -11,8 +11,15 @@ const port = Number(process.env.PORT || 3000);
 const password = process.env.APP_PASSWORD || '';
 const secret = process.env.APP_SECRET || '';
 const apiKey = process.env.ELEVENLABS_API_KEY || '';
-const voiceId = process.env.ELEVENLABS_VOICE_ID || '';
-const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
+const voiceModels = {
+  eleven_flash_v2_5: 'Flash v2.5',
+  eleven_v3_conversational: 'v3 Conversational',
+};
+const settingsPath = process.env.TTS_SETTINGS_PATH || '/data/settings/tts.json';
+const envVoice = process.env.ELEVENLABS_VOICE_ID || '';
+const envModel = process.env.ELEVENLABS_MODEL_ID || '';
+let activeVoice = envVoice;
+let activeModel = voiceModels[envModel] ? envModel : 'eleven_flash_v2_5';
 const maxText = 4000;
 const sessionMs = 12 * 60 * 60 * 1000;
 const loginRequired = true;
@@ -35,7 +42,27 @@ const types = {
 let speaking = false;
 const loginFailures = [];
 
-const ttsState = () => (apiKey && voiceId ? 'configured' : 'missing');
+const ttsState = () => (apiKey && activeVoice ? 'configured' : 'missing');
+
+const validVoice = (value) => /^[A-Za-z0-9_-]{8,64}$/.test(String(value || ''));
+
+const readStoredVoice = () => {
+  try {
+    const stored = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    if (voiceModels[stored.model]) activeModel = stored.model;
+    if (validVoice(stored.voiceId)) activeVoice = stored.voiceId;
+  } catch {}
+};
+
+const storeVoice = () => {
+  const dir = path.dirname(settingsPath);
+  mkdirSync(dir, {recursive: true});
+  const temp = `${settingsPath}.tmp`;
+  writeFileSync(temp, JSON.stringify({model: activeModel, voiceId: activeVoice}), {mode: 0o600});
+  renameSync(temp, settingsPath);
+};
+
+readStoredVoice();
 
 const sign = (payload) => {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -182,14 +209,14 @@ const alignmentOf = (payload) => {
 };
 
 const synthesize = async (text) => {
-  const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps`, {
+  const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(activeVoice)}/with-timestamps`, {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
       accept: 'application/json',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({text, model_id: modelId}),
+    body: JSON.stringify({text, model_id: activeModel}),
     signal: AbortSignal.timeout(45_000),
   });
   if (!upstream.ok) {
@@ -267,7 +294,49 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, {ok: false});
         return;
       }
-      sendJson(response, 200, {ok: true, tts: ttsState()});
+      sendJson(response, 200, {ok: true, tts: ttsState(), model: activeModel, voiceId: activeVoice});
+      return;
+    }
+
+    if (url.pathname === '/api/settings' && request.method === 'POST') {
+      if (!session) {
+        sendJson(response, 401, {error: {message: 'Нужно войти.'}});
+        return;
+      }
+      const body = await readBody(request);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        sendJson(response, 400, {error: {message: 'Не понял запрос.'}});
+        return;
+      }
+      const next = {model: activeModel, voiceId: activeVoice};
+      if (body.model !== undefined) {
+        if (!voiceModels[body.model]) {
+          sendJson(response, 400, {error: {message: 'Такой модели нет.'}});
+          return;
+        }
+        next.model = body.model;
+      }
+      if (body.voiceId !== undefined) {
+        const voice = String(body.voiceId || '').trim();
+        if (!validVoice(voice)) {
+          sendJson(response, 400, {error: {message: 'Нужен ID голоса из букв и цифр.'}});
+          return;
+        }
+        next.voiceId = voice;
+      }
+      const changed = next.model !== activeModel || next.voiceId !== activeVoice;
+      activeModel = next.model;
+      activeVoice = next.voiceId;
+      let stored = true;
+      if (changed) {
+        try {
+          storeVoice();
+        } catch {
+          stored = false;
+        }
+        console.log(JSON.stringify({event: 'tts.updated', model: activeModel, stored}));
+      }
+      sendJson(response, 200, {ok: true, model: activeModel, voiceId: activeVoice, changed, stored});
       return;
     }
 
@@ -276,7 +345,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 401, {error: {message: 'Нужно войти.'}});
         return;
       }
-      if (!apiKey || !voiceId) {
+      if (!apiKey || !activeVoice) {
         sendJson(response, 503, {error: {message: 'Ключ ElevenLabs ещё не задан на сервере.'}});
         return;
       }

@@ -58,6 +58,16 @@
           </div>
         </div>
       </section>
+      <section class="card settings">
+        <p class="label">Голос</p>
+        <div class="choices">
+          <button type="button" data-model="eleven_flash_v2_5" aria-pressed="false">Flash v2.5</button>
+          <button type="button" data-model="eleven_v3_conversational" aria-pressed="false">v3 Conversational</button>
+        </div>
+        <label for="voice-id">ID голоса</label>
+        <input id="voice-id" name="voiceId" autocomplete="off" spellcheck="false" maxlength="64" placeholder="ID голоса ElevenLabs">
+        <button id="save-voice" class="ghost" type="button">Сохранить голос</button>
+      </section>
       <form id="speak-form" class="card">
         <label for="text">Текст</label>
         <textarea id="text" name="text" rows="4" maxlength="4000" placeholder="Напишите фразу, которую кукла произнесёт" required></textarea>

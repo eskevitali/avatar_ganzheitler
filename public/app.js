@@ -63,12 +63,51 @@ const ensureHead = async () => {
   }
 };
 
+const voiceInput = document.querySelector('#voice-id');
+
+const applyVoiceSettings = (settings) => {
+  if (typeof settings.voiceId === 'string') voiceInput.value = settings.voiceId;
+  if (settings.model) markPressed('[data-model]', settings.model, 'model');
+};
+
+const saveVoice = async (patch) => {
+  const response = await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    setState(await readError(response), true);
+    return;
+  }
+  const settings = await response.json();
+  applyVoiceSettings(settings);
+  if (settings.changed) cachedClip = null;
+  if (playing) return;
+  if (!settings.changed) {
+    setState('Уже так и стоит.');
+    return;
+  }
+  setState(settings.stored
+    ? 'Голос сохранён. Следующая фраза сгенерируется заново.'
+    : 'Голос принят до перезапуска. На диск не записался.', !settings.stored);
+};
+
 const showStudio = (session) => {
   if (login) login.hidden = true;
   if (studio) studio.hidden = false;
+  applyVoiceSettings(session);
   if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
   ensureHead().catch(() => {});
 };
+
+for (const button of document.querySelectorAll('[data-model]')) {
+  button.addEventListener('click', () => saveVoice({model: button.dataset.model}));
+}
+
+document.querySelector('#save-voice').addEventListener('click', () => {
+  saveVoice({voiceId: voiceInput.value.trim()});
+});
 
 for (const button of document.querySelectorAll('[data-mood]')) {
   button.addEventListener('click', async () => {
