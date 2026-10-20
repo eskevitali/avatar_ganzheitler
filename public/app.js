@@ -114,19 +114,40 @@ for (const button of document.querySelectorAll('[data-mood]')) {
   });
 }
 
+const lipPoses = {
+  PP: {viseme_PP: 1, mouthClose: 0.55, jawOpen: 0.02},
+  aa: {viseme_aa: 1, jawOpen: 0.85, mouthOpen: 0.45},
+  O: {viseme_O: 1, jawOpen: 0.42, mouthFunnel: 0.8, mouthPucker: 0.45},
+  I: {viseme_I: 1, jawOpen: 0.16, mouthSmileLeft: 0.7, mouthSmileRight: 0.7, mouthStretchLeft: 0.35, mouthStretchRight: 0.35},
+};
+const lipKeys = ['viseme_PP', 'viseme_aa', 'viseme_O', 'viseme_I', 'jawOpen', 'mouthClose', 'mouthOpen', 'mouthFunnel', 'mouthPucker', 'mouthSmileLeft', 'mouthSmileRight', 'mouthStretchLeft', 'mouthStretchRight'];
+let lipToken = 0;
+
 for (const button of document.querySelectorAll('[data-viseme]')) {
   button.addEventListener('click', async () => {
     const doll = await ensureHead();
-    if (playing || doll.isSpeaking) return;
-    await doll.audioCtx.resume();
-    const seconds = 0.45;
+    if (playing) {
+      setState('Губы заняты речью. Остановите повтор.', true);
+      return;
+    }
+    if (doll.audioCtx) doll.audioCtx.resume();
+    const pose = lipPoses[button.dataset.viseme];
+    const vs = {};
+    for (const key of lipKeys) vs[key] = [0, pose[key] || 0, 0];
+    const seconds = 0.9;
     const buffer = doll.audioCtx.createBuffer(1, Math.ceil(doll.audioCtx.sampleRate * seconds), doll.audioCtx.sampleRate);
+    const token = ++lipToken;
+    markPressed('[data-viseme]', button.dataset.viseme, 'viseme');
+    setState(button.textContent.trim());
     doll.speakAudio({
       audio: buffer,
-      visemes: [button.dataset.viseme],
-      vtimes: [40],
-      vdurations: [320],
+      anim: {name: 'blendshapes', dt: [70, 620, 180], vs},
     }, {isRaw: true});
+    window.setTimeout(() => {
+      if (token !== lipToken || playing) return;
+      markPressed('[data-viseme]', '', 'viseme');
+      setState('Покой');
+    }, 900);
   });
 }
 
