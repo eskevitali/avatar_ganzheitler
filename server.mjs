@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 
 import {catalog, readSettings, saveSettings} from './profile-store.mjs';
 import {settingsOf} from './public/profiles.mjs';
+import {ttsError} from './tts-errors.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
@@ -182,13 +183,6 @@ const publicFile = (urlPath) => {
   return file;
 };
 
-const ttsError = (status) => {
-  if (status === 401) return {code: 'TTS_AUTH_FAILED', message: 'ElevenLabs не принимает API-ключ.'};
-  if (status === 400 || status === 422) return {code: 'TTS_INVALID_VOICE', message: 'ElevenLabs не принимает Voice ID или текст.'};
-  if (status === 429) return {code: 'TTS_RATE_LIMITED', message: 'ElevenLabs ограничил запросы или квоту.'};
-  return {code: 'TTS_PROVIDER_ERROR', message: 'ElevenLabs не отдал звук.'};
-};
-
 const alignmentOf = (payload) => {
   const source = payload?.normalized_alignment?.characters?.length
     ? payload.normalized_alignment
@@ -226,8 +220,10 @@ const synthesize = async (text) => {
     signal: AbortSignal.timeout(45_000),
   });
   if (!upstream.ok) {
-    await upstream.body?.cancel();
-    const error = ttsError(upstream.status);
+    // Provider can return authentication failures as HTTP 400. Inspect structured
+    // codes instead of blaming Voice ID/text; never log or expose the raw body.
+    const failure = await upstream.json().catch(() => null);
+    const error = ttsError(upstream.status, failure);
     console.error(JSON.stringify({event: 'speak.failed', code: error.code, status: upstream.status, text_length: text.length}));
     throw Object.assign(new Error(error.message), {status: 502, body: {error}});
   }
