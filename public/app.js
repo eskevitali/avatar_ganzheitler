@@ -1,4 +1,13 @@
 import {lipKeys, speechMouth} from './mouth.mjs';
+import {startBackground} from './background.mjs';
+const backgroundOnly = new URLSearchParams(location.search).get('layer') === 'background';
+const backgroundClean = backgroundOnly && new URLSearchParams(location.search).get('view') === 'clean';
+if (backgroundOnly) {
+  document.body.classList.add('background-only');
+  if (backgroundClean) document.body.classList.add('background-clean');
+  const loginForm = document.querySelector('#login-form');
+  if (loginForm) loginForm.action = `/api/login?return=${backgroundClean ? 'background-clean' : 'background'}`;
+}
 import {lipPoses, settingsOf} from './profiles.mjs';
 
 const login = document.querySelector('#login');
@@ -168,6 +177,12 @@ const showStudio = (session) => {
   if (login) login.hidden = true;
   if (studio) studio.hidden = false;
   applyVoiceSettings(session);
+  if (backgroundOnly) {
+    const demo = document.querySelector('#background-demo');
+    demo.hidden = false;
+    startBackground(demo, {clean: backgroundClean});
+    return;
+  }
   if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
   booting = loadProfiles();
   booting.catch(error => setState(error.message, true)).finally(() => { booting = null; });

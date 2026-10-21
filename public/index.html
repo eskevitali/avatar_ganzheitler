@@ -30,8 +30,22 @@
     <!-- login:end -->
 
     <section id="studio" hidden>
+      <section id="background-demo" aria-label="Фон квантового зала" hidden>
+        <div class="background-frame">
+          <img src="/scenes/quantum-hall.png" alt="Симметричный зал квантовых юнитов" width="1672" height="941">
+          <canvas aria-label="Анимированный световой слой зала"></canvas>
+        </div>
+        <div class="background-toolbar">
+          <div><p class="background-title">КВАНТОВЫЙ ЗАЛ · ФОН</p><output id="background-status" role="status"></output></div>
+          <label><input id="background-motion" type="checkbox" checked> Движение света</label>
+          <label>Сила света <input id="background-strength" type="range" min="0" max="100" value="78" aria-label="Сила света"></label>
+          <a href="/?layer=background&amp;view=clean" target="_blank" rel="noopener">Чистый кадр · 1920×1080</a>
+          <a href="/">Пульт кукол</a>
+          <output id="background-metrics" aria-label="Производительность фона">Измеряю частоту кадров…</output>
+        </div>
+      </section>
       <div id="doll" aria-label="Кукла"></div>
-      <p class="hint">Выберите установленный профиль куклы.</p>
+      <p class="hint">Выберите установленный профиль куклы. <a href="/?layer=background">Показать фон зала</a></p>
       <section class="card controls">
         <div>
           <label for="profile">Профиль куклы</label>

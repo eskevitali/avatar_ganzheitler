@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {catalog, readSettings, saveSettings} from './profile-store.mjs';
 import {settingsOf} from './public/profiles.mjs';
 import {ttsError} from './tts-errors.mjs';
+import {backgroundStore, backgroundSettings} from './background-state.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
@@ -22,6 +23,7 @@ const voiceModels = {
 };
 const settingsPath = process.env.TTS_SETTINGS_PATH || '/data/settings/tts.json';
 const profileSettingsPath = process.env.PROFILE_SETTINGS_PATH || path.join(path.dirname(settingsPath), 'profiles.json');
+const background = backgroundStore(process.env.BACKGROUND_SETTINGS_PATH || path.join(path.dirname(settingsPath), 'background.json'));
 const envVoice = process.env.ELEVENLABS_VOICE_ID || '';
 const envModel = process.env.ELEVENLABS_MODEL_ID || '';
 let activeVoice = envVoice;
@@ -278,7 +280,9 @@ const server = createServer(async (request, response) => {
       const token = sign({exp: Date.now() + sessionMs, nonce: randomBytes(8).toString('hex')});
       const sessionCookie = cookie(token, Math.floor(sessionMs / 1000));
       if (formPost) {
-        redirect('/', {'set-cookie': sessionCookie});
+        const destination = url.searchParams.get('return');
+        const returnTo = destination === 'background-clean' ? '/?layer=background&view=clean' : destination === 'background' ? '/?layer=background' : '/';
+        redirect(returnTo, {'set-cookie': sessionCookie});
         return;
       }
       sendJson(response, 200, {ok: true, tts: ttsState()}, {'set-cookie': sessionCookie});
@@ -297,6 +301,17 @@ const server = createServer(async (request, response) => {
         return;
       }
       sendJson(response, 200, {ok: true, tts: ttsState(), model: activeModel, voiceId: activeVoice});
+      return;
+    }
+
+    if (url.pathname === '/api/background' && ['GET', 'POST'].includes(request.method)) {
+      if (!session) return sendJson(response, 401, {error: {message: 'Нужно войти.'}});
+      if (request.method === 'GET') return sendJson(response, 200, background.read());
+      let settings;
+      try { settings = backgroundSettings(await readBody(request)); }
+      catch { return sendJson(response, 400, {error: {message: 'Нужны motion true/false и strength от 0 до 100.'}}); }
+      try { sendJson(response, 200, background.write(settings)); }
+      catch { sendJson(response, 500, {error: {message: 'Настройки фона не записались на диск.'}}); }
       return;
     }
 

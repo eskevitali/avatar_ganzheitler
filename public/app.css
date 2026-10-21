@@ -113,3 +113,27 @@ input[type="range"] { padding: 0; accent-color: #d7dde8; }
 .avatar-layer { position: absolute; inset: 0; }
 select { width: 100%; padding: 12px; margin: 8px 0; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; font: inherit; }
 #profile-errors { white-space: pre-line; }
+
+/* Reviewable background-only stage. The image is unfiltered and at full opacity. */
+body.background-only { background:#080d13; }
+body.background-only main { width:100%; max-width:none; padding:0; margin:0; }
+.background-only #studio > :not(#background-demo) { display:none !important; }
+.background-frame { position:relative; width:100%; aspect-ratio:1672 / 941; overflow:hidden; }
+.background-frame img { display:block; width:100%; height:100%; object-fit:contain; opacity:1; filter:none; }
+.background-frame canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.background-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:22px; padding:16px 24px; color:#c2d4dd; font-size:13px; }
+.background-title { color:#e0eef5; font:11px/1.6 monospace; letter-spacing:.16em; }
+#background-status { color:#8eb8ca; font-size:12px; }
+.background-toolbar label { display:flex; align-items:center; gap:8px; color:#bbced8; }
+.background-toolbar input[type=checkbox] { width:auto; accent-color:#78dcff; }
+.background-toolbar input[type=range] { width:130px; padding:0; accent-color:#78dcff; }
+.background-toolbar a, .hint a { color:#8bd9f7; }
+#background-metrics { width:100%; text-align:center; color:#6f96a8; font:11px monospace; }
+@media(max-width:700px) { .background-toolbar { gap:14px; padding:14px 12px; } }
+
+body.background-clean { overflow:hidden; background:#000; }
+.background-clean #background-demo { width:100vw; height:100vh; display:grid; place-items:center; }
+.background-clean .background-toolbar { display:none; }
+.background-clean .background-frame { width:min(100vw, calc(100vh * 16 / 9)); aspect-ratio:16/9; }
+.background-clean .background-frame img { width:100%; height:100%; object-fit:contain; }
+.background-clean #login { max-width:420px; margin:10vh auto; }
