@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "id": "quantum-face",
+  "name": "Квантовое лицо · художественный прототип",
+  "model": "quantum-face.glb",
+  "body": "M",
+  "cameraView": "head",
+  "appearance": {
+    "type": "filaments",
+    "style": "woven",
+    "color": "#009fe8",
+    "opacity": 0.52,
+    "brightness": 1.6,
+    "speed": 0.7,
+    "amplitude": 0.00035
+  },
+  "defaults": {
+    "mood": "neutral"
+  }
+}

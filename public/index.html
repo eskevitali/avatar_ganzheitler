@@ -44,13 +44,34 @@
           <output id="background-metrics" aria-label="Производительность фона">Измеряю частоту кадров…</output>
         </div>
       </section>
-      <div id="doll" aria-label="Кукла"></div>
+      <div id="composite-stage" data-face-phase="preview">
+        <div id="composite-background" hidden>
+          <img src="/scenes/quantum-hall.png" alt="Утверждённый фон квантового зала" width="1672" height="941">
+          <canvas aria-label="Анимированный световой слой зала"></canvas>
+        </div>
+        <div id="doll" aria-label="Кукла"></div>
+      </div>
+      <div id="face-controls" hidden>
+        <output id="face-phase" role="status">Лицо сформировано</output>
+        <div class="choices">
+          <button id="form-face" type="button" aria-pressed="true">Сформировать лицо</button>
+          <button id="dissolve-face" type="button" class="ghost" aria-pressed="false">Растворить</button>
+          <a id="clean-scene-link" href="/?scene=1&amp;view=clean" target="_blank" rel="noopener">Общий кадр · 1920×1080</a>
+          <a href="/?layer=background" target="_blank" rel="noopener">Настроить фон отдельно</a>
+        </div>
+        <div class="face-visuals">
+          <label>Непрозрачность нитей <input id="face-opacity" type="range" min="5" max="100" value="52"><output id="face-opacity-value">52%</output></label>
+          <label>Свечение <input id="face-brightness" type="range" min="20" max="300" value="160"><output id="face-brightness-value">160%</output></label>
+          <label>Движение нитей <input id="face-speed" type="range" min="0" max="200" value="70"><output id="face-speed-value">70%</output></label>
+        </div>
+        <output id="face-performance"></output>
+      </div>
       <p class="hint">Выберите установленный профиль куклы. <a href="/?layer=background">Показать фон зала</a></p>
       <section class="card controls">
         <div>
           <label for="profile">Профиль куклы</label>
           <select id="profile" disabled aria-label="Профиль куклы"></select>
-          <button type="button" id="save-profile" disabled>Сохранить губы и мимику профиля</button>
+          <button type="button" id="save-profile" disabled>Сохранить параметры профиля</button>
           <p class="hint">Настройки сохраняются отдельно для каждой куклы. Установка пакета описана в документации.</p>
           <p id="profile-errors" class="status error" role="alert"></p>
         </div>

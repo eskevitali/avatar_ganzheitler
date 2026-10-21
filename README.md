@@ -21,3 +21,5 @@ docker restart avatarnode-web
 Профили кукол, установка пакетов, совместимость, сохранение и локальная проверка: [PROFILES.md](PROFILES.md).
 
 Отдельный фон 1920×1080 для оценки и OBS: [BACKGROUND.md](BACKGROUND.md).
+
+Световое лицо и общий кадр: [QUANTUM_FACE.md](QUANTUM_FACE.md).

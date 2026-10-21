@@ -6,6 +6,16 @@ export const lipPoses = {
   O: {viseme_O: 1, jawOpen: 0.42, mouthFunnel: 0.8, mouthPucker: 0.45},
   I: {viseme_I: 1, jawOpen: 0.16, mouthSmileLeft: 0.7, mouthSmileRight: 0.7, mouthStretchLeft: 0.35, mouthStretchRight: 0.35},
 };
+export function visualsOf(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Неверные настройки волокон');
+  const result = {};
+  for (const [key, fallback, min, max] of [['opacity', .52, .05, 1], ['brightness', 1.6, .2, 3], ['speed', .7, 0, 2]]) {
+    const n = value[key] ?? fallback;
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) throw new Error(`visuals.${key}: вне диапазона`);
+    result[key] = n;
+  }
+  return result;
+}
 export function settingsOf(value = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Неверные настройки профиля');
   const mood = value.mood ?? 'neutral';
@@ -18,7 +28,20 @@ export function settingsOf(value = {}) {
       lips[pose][key] = number;
     }
   }
-  return {mood, lips};
+  return {mood, lips, ...(value.visuals === undefined ? {} : {visuals:visualsOf(value.visuals)})};
+}
+export function appearanceOf(raw) {
+  if (raw === undefined) return undefined;
+  if (!raw || raw.type !== 'filaments') throw new Error('Неизвестный тип appearance');
+  if (!/^#[0-9a-fA-F]{6}$/.test(raw.color)) throw new Error('appearance.color: нужен #RRGGBB');
+  if (raw.style !== undefined && !['lines', 'woven'].includes(raw.style)) throw new Error('Неизвестный стиль волокон');
+  const result = {type: 'filaments', style: raw.style || 'lines', color: raw.color};
+  for (const [key, fallback, min, max] of [['opacity', .52, .05, 1], ['brightness', 1.6, .2, 3], ['speed', .7, 0, 2], ['amplitude', .00035, 0, .002]]) {
+    const value = raw[key] ?? fallback;
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new Error(`appearance.${key}: вне диапазона`);
+    result[key] = value;
+  }
+  return result;
 }
 export function manifestOf(raw) {
   if (raw?.formatVersion !== 1) throw new Error('Поддерживается formatVersion: 1');
@@ -27,5 +50,5 @@ export function manifestOf(raw) {
   if (typeof raw.model !== 'string' || !/^[a-zA-Z0-9_-]+\.glb$/.test(raw.model)) throw new Error('Модель должна быть локальным файлом .glb без пути');
   if (!['F', 'M'].includes(raw.body)) throw new Error('body должен быть F или M');
   if (!['head', 'upper', 'mid', 'full'].includes(raw.cameraView ?? 'head')) throw new Error('Неизвестный cameraView');
-  return {formatVersion: 1, id: raw.id, name: raw.name.trim(), model: raw.model, body: raw.body, cameraView: raw.cameraView ?? 'head', defaults: settingsOf(raw.defaults)};
+  return {formatVersion: 1, id: raw.id, name: raw.name.trim(), model: raw.model, body: raw.body, cameraView: raw.cameraView ?? 'head', defaults: settingsOf(raw.defaults), ...(raw.appearance === undefined ? {} : {appearance: appearanceOf(raw.appearance)})};
 }

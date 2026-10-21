@@ -137,3 +137,34 @@ body.background-clean { overflow:hidden; background:#000; }
 .background-clean .background-frame { width:min(100vw, calc(100vh * 16 / 9)); aspect-ratio:16/9; }
 .background-clean .background-frame img { width:100%; height:100%; object-fit:contain; }
 .background-clean #login { max-width:420px; margin:10vh auto; }
+
+/* Character layer uses the accepted hall verbatim; its controls and state stay separate. */
+body.filament-mode main { width:min(1480px, calc(100% - 32px)); }
+.filament-mode .card { max-width:820px; margin-left:auto; margin-right:auto; }
+#composite-stage { position:relative; }
+#composite-stage.has-filaments { aspect-ratio:16/9; width:100%; overflow:hidden; background:#000; }
+#composite-background { position:absolute; inset:0; }
+#composite-background img { display:block; width:100%; height:100%; object-fit:contain; }
+#composite-background canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.has-filaments #doll { position:absolute; inset:0; width:100%; height:100%; margin:0; background:transparent; border-radius:0; }
+#face-controls { display:grid; justify-content:center; gap:12px; margin:18px auto 24px; text-align:center; }
+#face-controls .choices { align-items:center; justify-content:center; }
+#face-controls a { color:#8bd9f7; font-size:12px; margin:0 8px; }
+#face-phase { color:#91def5; }
+#face-performance { color:#7197aa; font:11px monospace; }
+#face-controls button[aria-pressed=true] { background:#b3edff; color:#073041; }
+body.composite-clean { overflow:hidden; background:#000; }
+.composite-clean main { width:100vw; max-width:none; padding:0; margin:0; }
+.composite-clean #studio { width:100vw; height:100vh; display:grid; place-items:center; }
+.composite-clean #studio > :not(#composite-stage) { display:none !important; }
+.composite-clean #composite-stage { width:min(100vw, calc(100vh * 16 / 9)); aspect-ratio:16/9; }
+.composite-clean #login { max-width:420px; margin:10vh auto; }
+
+body.composite-clean.filament-mode main { width:100vw; max-width:none; }
+
+.face-visuals { display:flex; flex-wrap:wrap; justify-content:center; gap:18px; max-width:850px; }
+.face-visuals label { display:grid; grid-template-columns:auto 110px 40px; align-items:center; gap:8px; font-size:12px; }
+.face-visuals input { padding:0; accent-color:#8cddff; }
+.face-visuals output { font:11px monospace; color:#6d9bb0; }
+
+.has-filaments #doll canvas { filter:blur(.65px); }

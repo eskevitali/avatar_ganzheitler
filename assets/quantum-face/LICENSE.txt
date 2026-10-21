@@ -1,0 +1,11 @@
+Anatomical geometry: cropped head from the official MakeHuman base mesh, CC0 1.0 Universal.
+Original asset was explicitly released as CC0 in September 2020.
+Original copyright holders at release: Data Collection AB, Joel Palmius, Jonas Hauquier.
+Source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+Asset license: https://github.com/makehumancommunity/makehuman/blob/master/LICENSE.ASSETS.md
+A copy of the complete asset license and extracted head data is provided in assets/sources/makehuman.
+
+This package contains a cropped, adapted head and original procedural filament contours/morphs.
+There are no Ready Player Me mesh parts, skin textures, body meshes, or reference-image textures in this head.
+The derived package geometry is also provided under CC0-1.0, without additional restrictions.
+The renderer effect is application-owned code and is not executable code imported from this package.

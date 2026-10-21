@@ -1,6 +1,16 @@
 import {lipKeys, speechMouth} from './mouth.mjs';
 import {startBackground} from './background.mjs';
+const compositeClean = new URLSearchParams(location.search).get('scene') === '1';
+if (compositeClean) document.body.classList.add('composite-clean');
+const params = new URLSearchParams(location.search);
+const suppliedChannel = params.get('channel');
+const sceneKey = suppliedChannel && /^[a-zA-Z0-9-]{1,64}$/.test(suppliedChannel) ? suppliedChannel : Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+const sceneChannel = 'BroadcastChannel' in window ? new BroadcastChannel(`avatar-scene:${sceneKey}`) : null;
 const backgroundOnly = new URLSearchParams(location.search).get('layer') === 'background';
+if (compositeClean) {
+  const form = document.querySelector('#login-form');
+  if (form) form.action='/api/login?return=composite';
+}
 const backgroundClean = backgroundOnly && new URLSearchParams(location.search).get('view') === 'clean';
 if (backgroundOnly) {
   document.body.classList.add('background-only');
@@ -8,7 +18,9 @@ if (backgroundOnly) {
   const loginForm = document.querySelector('#login-form');
   if (loginForm) loginForm.action = `/api/login?return=${backgroundClean ? 'background-clean' : 'background'}`;
 }
-import {lipPoses, settingsOf} from './profiles.mjs';
+import {lipPoses, settingsOf, visualsOf} from './profiles.mjs';
+import {attachFilaments} from './filaments.mjs';
+import {readClipCache, writeClipCache, clearClipCache} from './clip-cache.mjs';
 
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
@@ -24,6 +36,7 @@ let booting = null;
 let playing = false;
 let repeatOn = false;
 let cachedClip = null;
+let voiceIdentity = '';
 
 const setState = (message, isError = false) => {
   state.textContent = message;
@@ -41,17 +54,49 @@ const markPressed = (selector, value, attr) => {
   }
 };
 
+const compositeStage = document.querySelector('#composite-stage');
+let compositeBackground = null;
+let phaseTimer;
+const facePhase = phase => {
+  clearTimeout(phaseTimer);
+  const formed = !['waiting', 'preparing', 'dissolving'].includes(phase);
+  compositeStage.dataset.facePhase = phase;
+  head?.filaments?.reveal(formed ? 1 : 0);
+  document.querySelector('#face-phase').textContent = ({preview:'Лицо сформировано', waiting:'Ожидание', preparing:'Готовлю аудио · лицо не сформировано', forming:'Лицо формируется', speaking:'Говорит', dissolving:'Лицо растворяется'})[phase];
+  document.querySelector('#form-face').setAttribute('aria-pressed', String(formed));
+  document.querySelector('#dissolve-face').setAttribute('aria-pressed', String(!formed));
+  publishScene();
+};
+document.querySelector('#form-face').addEventListener('click', () => { facePhase('preview'); setState('Формирование лица. Текст не требуется.'); });
+document.querySelector('#dissolve-face').addEventListener('click', () => { facePhase('dissolving'); setState('Растворение лица. Текст не требуется.'); });
+
 const profileSelect = document.querySelector('#profile');
 const saveProfileButton = document.querySelector('#save-profile');
 let profiles = [];
 let profileSettings = {};
 let activeProfile = null;
 let currentMood = 'neutral';
+let faceVisuals = null;
 let switching = false;
+
+const profileSnapshot = () => ({mood:currentMood, lips:structuredClone(lipValues), ...(faceVisuals ? {visuals:{...faceVisuals}} : {})});
+const syncVisualInputs = () => {
+  if (!faceVisuals) return;
+  for (const key of ['opacity','brightness','speed']) {
+    document.querySelector(`#face-${key}`).value=String(Math.round(faceVisuals[key]*100));
+    document.querySelector(`#face-${key}-value`).textContent=`${Math.round(faceVisuals[key]*100)}%`;
+  }
+};
+for (const key of ['opacity','brightness','speed']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
+  if (!head?.filaments || switching) return;
+  faceVisuals=head.filaments.tune({[key]:Number(event.target.value)/100});
+  syncVisualInputs(); if (!playing) facePhase('preview'); else publishScene();
+});
 
 const disposeHead = (doll) => {
   if (!doll) return;
   const node = doll.nodeAvatar;
+  doll.filaments?.dispose();
   try { doll.dispose(); }
   finally {
     doll.audioCtx?.close().catch(() => {});
@@ -76,22 +121,34 @@ const switchProfile = async (id) => {
     const {TalkingHead} = await import('./vendor/talkinghead.mjs');
     candidate = new TalkingHead(node, {
       lipsyncModules: ['en'], lipsyncLang: 'en', cameraView: profile.cameraView,
-      modelPixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+      modelPixelRatio: profile.appearance ? Math.min(1, 1 / (window.devicePixelRatio || 1)) : Math.min(window.devicePixelRatio || 1, 2),
     });
     await candidate.showAvatar({url: profile.url, body: profile.body, avatarMood: settings.mood, lipsyncLang: 'en'});
     candidate.setView(profile.cameraView);
+    if (profile.appearance) candidate.filaments = attachFilaments(candidate, {...profile.appearance, ...settings.visuals});
     // Commit only after loading succeeds; a failed candidate leaves the old doll usable.
-    if (activeProfile) profileSettings[activeProfile.id] = {mood: currentMood, lips: structuredClone(lipValues)};
+    if (activeProfile) profileSettings[activeProfile.id] = profileSnapshot();
     disposeHead(head);
     head = candidate;
     activeProfile = profile;
+    document.querySelector('#clean-scene-link').href=`/?scene=1&view=clean&profile=${encodeURIComponent(id)}&channel=${sceneKey}`;
+    try { localStorage.setItem('avatar.profile', id); } catch {}
+    const isFilament = Boolean(profile.appearance);
+    compositeStage.classList.toggle('has-filaments', isFilament);
+    document.body.classList.toggle('filament-mode', isFilament);
+    document.querySelector('#face-controls').hidden = !isFilament;
+    document.querySelector('#composite-background').hidden = !isFilament;
+    if (isFilament && !compositeBackground) compositeBackground = startBackground(document.querySelector('#composite-background'), {clean:true});
     currentMood = settings.mood;
+    faceVisuals = profile.appearance ? visualsOf({...profile.appearance, ...settings.visuals}) : null;
+    syncVisualInputs();
     for (const key of Object.keys(lipValues)) delete lipValues[key];
     Object.assign(lipValues, settings.lips);
     clearLip(head);
     markPressed('[data-mood]', currentMood, 'mood');
     profileSelect.value = id;
     node.style.visibility = '';
+    facePhase('preview');
     setState(profile.name);
   } catch (error) {
     try { disposeHead(candidate); } catch (cleanupError) { console.error('Profile cleanup failed', cleanupError); }
@@ -118,7 +175,7 @@ profileSelect.addEventListener('change', () => {
 saveProfileButton.addEventListener('click', async () => {
   if (!activeProfile || switching) return;
   const id = activeProfile.id;
-  const settings = {mood: currentMood, lips: structuredClone(lipValues)};
+  const settings = profileSnapshot();
   saveProfileButton.disabled = true;
   try {
     const response = await fetch('/api/profile-settings', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({id, settings})});
@@ -139,13 +196,73 @@ const loadProfiles = async () => {
     option.value = profile.id; option.textContent = profile.name;
     return option;
   }));
-  await switchProfile('training');
+  let lastProfile;
+  try { lastProfile = localStorage.getItem('avatar.profile'); } catch {}
+  const desired = compositeClean ? (params.get('profile') || 'quantum-face') : lastProfile;
+  await switchProfile(profiles.some(p=>p.id===desired) ? desired : 'training');
+  if (compositeClean) sceneChannel?.postMessage({kind:'ready'});
   document.querySelector('#profile-errors').textContent = result.errors.map(e => `${e.id}: ${e.message}`).join('\n');
 };
+
+// Preview-only scene link: share bounded visual state/poses within this browser.
+// It contains no voice credentials, audio data, provider requests or external transport.
+function publishScene() {
+  if (compositeClean || !activeProfile) return;
+  sceneChannel?.postMessage({kind:'settings', profileId:activeProfile.id, settings:profileSnapshot(), selectedLip, phase:compositeStage.dataset.facePhase});
+}
+let sceneApplying = false;
+if (sceneChannel) sceneChannel.onmessage = async event => {
+  const message = event.data;
+  if (!message || typeof message !== 'object') return;
+  if (!compositeClean) { if (message.kind === 'ready') publishScene(); return; }
+  if (!head || switching) return;
+  if (message.kind === 'pose' && !sceneApplying) {
+    for (const key of lipKeys) {
+      const value=message.values?.[key];
+      if (typeof value === 'number' && Number.isFinite(value)) pinMorph(head,key,Math.min(1,Math.max(0,value)));
+    }
+    compositeStage.dataset.liveJaw=String(Math.round((message.values?.jawOpen || 0)*1000)/1000);
+    compositeStage.dataset.poseFrames=String(Number(compositeStage.dataset.poseFrames || 0)+1);
+    return;
+  }
+  if (message.kind === 'pose-end') {
+    releaseLipFixed(head); if (selectedLip) applyLipFixed(head,selectedLip); return;
+  }
+  if (message.kind !== 'settings' || sceneApplying) return;
+  sceneApplying = true;
+  try {
+    const next=settingsOf(message.settings);
+    const profile=profiles.find(p=>p.id===message.profileId);
+    if(!profile) return;
+    if(activeProfile?.id!==profile.id) await switchProfile(profile.id);
+    currentMood=next.mood; head.setMood(currentMood);
+    for(const key of Object.keys(lipValues)) delete lipValues[key];
+    Object.assign(lipValues,next.lips);
+    if(head.filaments) {faceVisuals=head.filaments.tune(next.visuals || profile.appearance);syncVisualInputs();}
+    selectedLip=Object.hasOwn(lipPoses,message.selectedLip) ? message.selectedLip : null;
+    compositeStage.dataset.previewPose=selectedLip || '';
+    releaseLipFixed(head);if(selectedLip)applyLipFixed(head,selectedLip);
+    const phase=['preview','waiting','preparing','forming','speaking','dissolving'].includes(message.phase)?message.phase:'preview';
+    facePhase(phase);
+  } catch { setState('Не удалось применить параметры общего вида.',true); }
+  finally { sceneApplying=false; }
+};
+let wasSharingPose=false;
+if (!compositeClean) setInterval(()=>{
+  if(playing && head && activeProfile?.appearance) {
+    const values=Object.fromEntries(lipKeys.map(k=>[k,head.mtAvatar?.[k]?.applied ?? 0]));
+    sceneChannel?.postMessage({kind:'pose',values}); wasSharingPose=true;
+  } else if(wasSharingPose) {
+    wasSharingPose=false;sceneChannel?.postMessage({kind:'pose-end'});publishScene();
+  }
+},40);
 
 const voiceInput = document.querySelector('#voice-id');
 
 const applyVoiceSettings = (settings) => {
+  const nextIdentity=JSON.stringify([settings.model,settings.voiceId]);
+  if(voiceIdentity && voiceIdentity!==nextIdentity) {cachedClip=null;clearClipCache(sessionStorage);}
+  voiceIdentity=nextIdentity;
   if (typeof settings.voiceId === 'string') voiceInput.value = settings.voiceId;
   if (settings.model) markPressed('[data-model]', settings.model, 'model');
 };
@@ -201,7 +318,9 @@ for (const button of document.querySelectorAll('[data-mood]')) {
     if (switching || !head) return;
     const doll = await ensureHead();
     doll.setMood(button.dataset.mood);
+    if (!playing) facePhase('preview');
     currentMood = button.dataset.mood;
+    publishScene();
     markPressed('[data-mood]', button.dataset.mood, 'mood');
     if (!playing) setState(button.textContent);
   });
@@ -279,6 +398,7 @@ const renderSliders = (name) => {
       lipValues[name][key] = next;
       output.textContent = input.value;
       pinMorph(head, key, next);
+      publishScene();
     });
     row.append(caption, input, output);
     lipSliders.append(row);
@@ -292,6 +412,7 @@ const clearLip = (doll) => {
   lipTune.hidden = true;
   lipSliders.replaceChildren();
   if (!playing) setState('Покой');
+  publishScene();
 };
 
 const selectLip = async (name) => {
@@ -304,6 +425,7 @@ const selectLip = async (name) => {
     clearLip(doll);
     return;
   }
+  facePhase('preview');
   if (!lipValues[name]) lipValues[name] = {...lipPoses[name]};
   selectedLip = name;
   applyLipFixed(doll, name);
@@ -312,6 +434,7 @@ const selectLip = async (name) => {
   renderSliders(name);
   lipTune.hidden = false;
   setState(`Форма «${lipLetter(name)}»`);
+  publishScene();
 };
 
 for (const button of document.querySelectorAll('[data-viseme]')) {
@@ -330,6 +453,7 @@ const readError = async (response) => {
 };
 
 document.querySelector('#logout')?.addEventListener('click', async () => {
+  clearClipCache(sessionStorage);
   await fetch('/api/logout', {method: 'POST'});
   location.assign('/');
 });
@@ -355,6 +479,11 @@ const playClip = async (doll, clip, fromCache) => {
   await doll.audioCtx.resume();
   if (selectedLip) releaseLipFixed(doll);
   const frames = speechMouth(clip.audio, clip.alignment, lipPoseNow());
+  if (doll.filaments) {
+    facePhase('forming');
+    await new Promise(resolve => setTimeout(resolve, 650));
+    facePhase('speaking');
+  }
   doll.speakAudio({
     audio: clip.audio,
     anim: {name: 'blendshapes', dt: frames.dt, vs: frames.vs},
@@ -365,17 +494,19 @@ const playClip = async (doll, clip, fromCache) => {
 
 const loadClip = async (phrase) => {
   if (cachedClip && cachedClip.phrase === phrase) return cachedClip;
-  setState('Готовлю голос…');
-  const response = await fetch('/api/speak', {
-    method: 'POST',
-    headers: {'content-type': 'application/json'},
-    body: JSON.stringify({text: phrase}),
-  });
-  if (!response.ok) {
-    setState(await readError(response), true);
-    return null;
+  let payload=readClipCache(sessionStorage,phrase,voiceIdentity);
+  const restored=Boolean(payload);
+  if(!payload) {
+    setState('Готовлю голос…');
+    if (head?.filaments) facePhase('preparing');
+    speakForm.dataset.ttsRequests=String(Number(speakForm.dataset.ttsRequests || 0)+1);
+    const response = await fetch('/api/speak', {
+      method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text: phrase}),
+    });
+    if (!response.ok) { setState(await readError(response), true); return null; }
+    payload = await response.json();
+    writeClipCache(sessionStorage,phrase,voiceIdentity,payload);
   }
-  const payload = await response.json();
   if (!payload.audio_base64) {
     setState('Сервер не отдал звук.', true);
     return null;
@@ -385,7 +516,7 @@ const loadClip = async (phrase) => {
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   const doll = await ensureHead();
   const audio = await doll.audioCtx.decodeAudioData(bytes.buffer.slice(0));
-  cachedClip = {phrase, audio, alignment: payload.alignment || null};
+  cachedClip = {phrase, audio, alignment: payload.alignment || null, restored};
   return cachedClip;
 };
 
@@ -401,7 +532,7 @@ const speakPhrase = async (phrase) => {
     const clip = await loadClip(phrase);
     if (!clip) return;
     do {
-      await playClip(doll, clip, fromCache || repeatOn);
+      await playClip(doll, clip, fromCache || clip.restored || repeatOn);
     } while (repeatOn && cachedClip === clip);
   } catch (error) {
     setState(error?.name === 'EncodingError' ? 'Браузер не смог проиграть звук.' : 'Не удалось произнести фразу.', true);
@@ -411,6 +542,10 @@ const speakPhrase = async (phrase) => {
     speakButton.disabled = false;
     setLipLocked(false);
     if (selectedLip && head) applyLipFixed(head, selectedLip);
+    if (head?.filaments) {
+      facePhase('dissolving');
+      phaseTimer=setTimeout(()=>facePhase('waiting'),1500);
+    }
     if (!state.classList.contains('error')) setState(selectedLip ? `Форма «${lipLetter(selectedLip)}»` : 'Покой');
   }
 };

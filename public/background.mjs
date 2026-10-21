@@ -3,10 +3,10 @@
 export function startBackground(root, {clean = false} = {}) {
   const canvas = root.querySelector('canvas');
   const ctx = canvas.getContext('2d', {alpha: true});
-  const motion = root.querySelector('#background-motion');
-  const strength = root.querySelector('#background-strength');
-  const metrics = root.querySelector('#background-metrics');
-  const status = root.querySelector('#background-status');
+  const motion = root.querySelector('#background-motion') || document.createElement('input');
+  const strength = root.querySelector('#background-strength') || Object.assign(document.createElement('input'), {value:'78'});
+  const metrics = root.querySelector('#background-metrics') || document.createElement('output');
+  const status = root.querySelector('#background-status') || document.createElement('output');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   motion.checked = !reduced;
   let writing = false, editing = false;

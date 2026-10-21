@@ -281,7 +281,7 @@ const server = createServer(async (request, response) => {
       const sessionCookie = cookie(token, Math.floor(sessionMs / 1000));
       if (formPost) {
         const destination = url.searchParams.get('return');
-        const returnTo = destination === 'background-clean' ? '/?layer=background&view=clean' : destination === 'background' ? '/?layer=background' : '/';
+        const returnTo = destination === 'composite' ? '/?scene=1&view=clean' : destination === 'background-clean' ? '/?layer=background&view=clean' : destination === 'background' ? '/?layer=background' : '/';
         redirect(returnTo, {'set-cookie': sessionCookie});
         return;
       }
