@@ -168,3 +168,5 @@ body.composite-clean.filament-mode main { width:100vw; max-width:none; }
 .face-visuals output { font:11px monospace; color:#6d9bb0; }
 
 .has-filaments #doll canvas { filter:blur(.65px); }
+
+.has-filaments #doll.reference-mask canvas { filter:none; }

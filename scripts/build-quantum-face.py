@@ -234,6 +234,6 @@ doc={'asset':{'version':'2.0','generator':'Quantum Face generator; anatomical ba
 j=json.dumps(doc,separators=(',',':')).encode();j+=b' '*((-len(j))%4);blob+=b'\0'*((-len(blob))%4)
 body=struct.pack('<II',len(j),0x4e4f534a)+j+struct.pack('<II',len(blob),0x004e4942)+blob
 (OUT/'quantum-face.glb').write_bytes(struct.pack('<III',0x46546c67,2,12+len(body))+body)
-manifest={'formatVersion':1,'id':'quantum-face','name':'Квантовое лицо · художественный прототип','model':'quantum-face.glb','body':'M','cameraView':'head','appearance':{'type':'filaments','style':'woven','color':'#009fe8','opacity':.52,'brightness':1.6,'speed':.7,'amplitude':.00035},'defaults':{'mood':'neutral'}}
+manifest={'formatVersion':1,'id':'quantum-face','name':'Квантовое лицо · художественный прототип','model':'quantum-face.glb','body':'M','cameraView':'head','appearance':{'type':'filaments','style':'woven','color':'#009fe8','opacity':.52,'brightness':1.6,'speed':.7,'amplitude':.00035,'activity':{'type':'neural-glow','strength':.65}},'defaults':{'mood':'neutral'}}
 (OUT/'profile.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
 print(json.dumps({'vertices':len(positions),'triangles':len(indices)//3,'morphs':len(MORPHS),'bytes':12+len(body)}))

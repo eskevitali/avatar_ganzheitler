@@ -12,7 +12,11 @@
     "opacity": 0.52,
     "brightness": 1.6,
     "speed": 0.7,
-    "amplitude": 0.00035
+    "amplitude": 0.00035,
+    "activity": {
+      "type": "neural-glow",
+      "strength": 0.65
+    }
   },
   "defaults": {
     "mood": "neutral"

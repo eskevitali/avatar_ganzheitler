@@ -1,0 +1,9 @@
+{
+  "imageWidth": 1447,
+  "imageHeight": 1087,
+  "mouthSeamPixels": [[665,680],[685,667],[705,651],[725,642],[745,639],[765,640],[785,641],[805,647],[825,658],[845,672],[865,683]],
+  "mouthCenterPixels": [775,640],
+  "mouthHalfWidthPixels": 101.3,
+  "eyeRightUv": [0.429,0.391],
+  "eyeLeftUv": [0.642,0.391]
+}

@@ -4,7 +4,11 @@ const compositeClean = new URLSearchParams(location.search).get('scene') === '1'
 if (compositeClean) document.body.classList.add('composite-clean');
 const params = new URLSearchParams(location.search);
 const suppliedChannel = params.get('channel');
-const sceneKey = suppliedChannel && /^[a-zA-Z0-9-]{1,64}$/.test(suppliedChannel) ? suppliedChannel : Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+let storedSceneKey;
+try { if (!compositeClean) storedSceneKey=sessionStorage.getItem('avatar.scene-channel.v1'); } catch {}
+const validSceneKey=value=>typeof value==='string' && /^[a-zA-Z0-9-]{1,64}$/.test(value);
+const sceneKey = validSceneKey(suppliedChannel) ? suppliedChannel : validSceneKey(storedSceneKey) ? storedSceneKey : Array.from(crypto.getRandomValues(new Uint32Array(4))).join('-');
+try { if (!compositeClean) sessionStorage.setItem('avatar.scene-channel.v1',sceneKey); } catch {}
 const sceneChannel = 'BroadcastChannel' in window ? new BroadcastChannel(`avatar-scene:${sceneKey}`) : null;
 const backgroundOnly = new URLSearchParams(location.search).get('layer') === 'background';
 if (compositeClean) {
@@ -20,6 +24,7 @@ if (backgroundOnly) {
 }
 import {lipPoses, settingsOf, visualsOf} from './profiles.mjs';
 import {attachFilaments} from './filaments.mjs';
+import {attachReferenceMask} from './reference-mask.mjs';
 import {readClipCache, writeClipCache, clearClipCache} from './clip-cache.mjs';
 
 const login = document.querySelector('#login');
@@ -62,7 +67,7 @@ const facePhase = phase => {
   const formed = !['waiting', 'preparing', 'dissolving'].includes(phase);
   compositeStage.dataset.facePhase = phase;
   head?.filaments?.reveal(formed ? 1 : 0);
-  document.querySelector('#face-phase').textContent = ({preview:'Лицо сформировано', waiting:'Ожидание', preparing:'Готовлю аудио · лицо не сформировано', forming:'Лицо формируется', speaking:'Говорит', dissolving:'Лицо растворяется'})[phase];
+  document.querySelector('#face-phase').textContent = ({preview:'Лицо сформировано', waiting:'Ожидание', preparing:'Готовлю аудио · лицо не сформировано', forming:'Лицо формируется', speaking:'Говорит', settling:'Покой · сияние успокаивается', dissolving:'Лицо растворяется'})[phase];
   document.querySelector('#form-face').setAttribute('aria-pressed', String(formed));
   document.querySelector('#dissolve-face').setAttribute('aria-pressed', String(!formed));
   publishScene();
@@ -82,12 +87,15 @@ let switching = false;
 const profileSnapshot = () => ({mood:currentMood, lips:structuredClone(lipValues), ...(faceVisuals ? {visuals:{...faceVisuals}} : {})});
 const syncVisualInputs = () => {
   if (!faceVisuals) return;
-  for (const key of ['opacity','brightness','speed']) {
+  for (const key of ['opacity','brightness','speed','activityStrength']) {
+    const enabled=key!=='activityStrength' || Boolean(activeProfile?.appearance?.activity);
+    document.querySelector(`#face-${key}`).closest('label').hidden=!enabled;
+    if(!enabled)continue;
     document.querySelector(`#face-${key}`).value=String(Math.round(faceVisuals[key]*100));
     document.querySelector(`#face-${key}-value`).textContent=`${Math.round(faceVisuals[key]*100)}%`;
   }
 };
-for (const key of ['opacity','brightness','speed']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
+for (const key of ['opacity','brightness','speed','activityStrength']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
   if (!head?.filaments || switching) return;
   faceVisuals=head.filaments.tune({[key]:Number(event.target.value)/100});
   syncVisualInputs(); if (!playing) facePhase('preview'); else publishScene();
@@ -125,7 +133,8 @@ const switchProfile = async (id) => {
     });
     await candidate.showAvatar({url: profile.url, body: profile.body, avatarMood: settings.mood, lipsyncLang: 'en'});
     candidate.setView(profile.cameraView);
-    if (profile.appearance) candidate.filaments = attachFilaments(candidate, {...profile.appearance, ...settings.visuals});
+    if (profile.appearance?.style === 'reference-mask') candidate.filaments = attachReferenceMask(candidate, {...profile.appearance, ...settings.visuals});
+    else if (profile.appearance) candidate.filaments = attachFilaments(candidate, {...profile.appearance, ...settings.visuals});
     // Commit only after loading succeeds; a failed candidate leaves the old doll usable.
     if (activeProfile) profileSettings[activeProfile.id] = profileSnapshot();
     disposeHead(head);
@@ -140,7 +149,7 @@ const switchProfile = async (id) => {
     document.querySelector('#composite-background').hidden = !isFilament;
     if (isFilament && !compositeBackground) compositeBackground = startBackground(document.querySelector('#composite-background'), {clean:true});
     currentMood = settings.mood;
-    faceVisuals = profile.appearance ? visualsOf({...profile.appearance, ...settings.visuals}) : null;
+    faceVisuals = profile.appearance ? visualsOf({...profile.appearance, ...settings.visuals, activityStrength:settings.visuals?.activityStrength ?? profile.appearance.activity?.strength}) : null;
     syncVisualInputs();
     for (const key of Object.keys(lipValues)) delete lipValues[key];
     Object.assign(lipValues, settings.lips);
@@ -198,7 +207,8 @@ const loadProfiles = async () => {
   }));
   let lastProfile;
   try { lastProfile = localStorage.getItem('avatar.profile'); } catch {}
-  const desired = compositeClean ? (params.get('profile') || 'quantum-face') : lastProfile;
+  let desired = compositeClean ? (params.get('profile') || 'reference-mask-002') : lastProfile;
+  if ((!desired || desired === 'quantum-face') && profiles.some(p=>p.id==='reference-mask-002')) desired='reference-mask-002';
   await switchProfile(profiles.some(p=>p.id===desired) ? desired : 'training');
   if (compositeClean) sceneChannel?.postMessage({kind:'ready'});
   document.querySelector('#profile-errors').textContent = result.errors.map(e => `${e.id}: ${e.message}`).join('\n');
@@ -221,11 +231,13 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
       const value=message.values?.[key];
       if (typeof value === 'number' && Number.isFinite(value)) pinMorph(head,key,Math.min(1,Math.max(0,value)));
     }
+    head.filaments?.react(message.audioLevel, true);
     compositeStage.dataset.liveJaw=String(Math.round((message.values?.jawOpen || 0)*1000)/1000);
     compositeStage.dataset.poseFrames=String(Number(compositeStage.dataset.poseFrames || 0)+1);
     return;
   }
   if (message.kind === 'pose-end') {
+    head.filaments?.react(0,false);
     releaseLipFixed(head); if (selectedLip) applyLipFixed(head,selectedLip); return;
   }
   if (message.kind !== 'settings' || sceneApplying) return;
@@ -242,16 +254,16 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
     selectedLip=Object.hasOwn(lipPoses,message.selectedLip) ? message.selectedLip : null;
     compositeStage.dataset.previewPose=selectedLip || '';
     releaseLipFixed(head);if(selectedLip)applyLipFixed(head,selectedLip);
-    const phase=['preview','waiting','preparing','forming','speaking','dissolving'].includes(message.phase)?message.phase:'preview';
+    const phase=['preview','waiting','preparing','forming','speaking','settling','dissolving'].includes(message.phase)?message.phase:'preview';
     facePhase(phase);
   } catch { setState('Не удалось применить параметры общего вида.',true); }
   finally { sceneApplying=false; }
 };
 let wasSharingPose=false;
 if (!compositeClean) setInterval(()=>{
-  if(playing && head && activeProfile?.appearance) {
+  if(head && (head.isSpeaking || head.isAudioPlaying) && activeProfile?.appearance) {
     const values=Object.fromEntries(lipKeys.map(k=>[k,head.mtAvatar?.[k]?.applied ?? 0]));
-    sceneChannel?.postMessage({kind:'pose',values}); wasSharingPose=true;
+    sceneChannel?.postMessage({kind:'pose',values,audioLevel:head.filaments?.audioLevel || 0}); wasSharingPose=true;
   } else if(wasSharingPose) {
     wasSharingPose=false;sceneChannel?.postMessage({kind:'pose-end'});publishScene();
   }
@@ -543,8 +555,8 @@ const speakPhrase = async (phrase) => {
     setLipLocked(false);
     if (selectedLip && head) applyLipFixed(head, selectedLip);
     if (head?.filaments) {
-      facePhase('dissolving');
-      phaseTimer=setTimeout(()=>facePhase('waiting'),1500);
+      facePhase('settling');
+      phaseTimer=setTimeout(()=>{facePhase('dissolving');phaseTimer=setTimeout(()=>facePhase('waiting'),1500);},2500);
     }
     if (!state.classList.contains('error')) setState(selectedLip ? `Форма «${lipLetter(selectedLip)}»` : 'Покой');
   }

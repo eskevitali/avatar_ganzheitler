@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {visualsOf} from './profiles.mjs';
+import {advanceActivity} from './activity.mjs';
 // Renderer-owned, bounded material adapter. Profiles contain data, never shader source.
 const noiseGLSL = `
 float fhash(vec2 p) { p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
@@ -7,14 +8,17 @@ float fnoise(vec2 p) {
  vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
  return mix(mix(fhash(i),fhash(i+vec2(1,0)),f.x),mix(fhash(i+vec2(0,1)),fhash(i+vec2(1,1)),f.x),f.y);
 }
+float softGlow(vec2 p,vec2 center,vec2 radius) {
+ vec2 d=(p-center)/radius;float a=max(0.0,1.0-dot(d,d));return a*a*a;
+}
 float strand(float field, float width) {
  float aa=max(.006,fwidth(field)*.32);
  return 1.0-smoothstep(width,width+aa,abs(field-.5));
 }
 `;
 export function attachFilaments(doll, appearance) {
-  let visual = visualsOf(appearance);
-  const uniforms = {threadTime:{value:0}, threadReveal:{value:1}, threadMotion:{value:appearance.amplitude}, threadSpeed:{value:visual.speed}, threadBrightness:{value:visual.brightness}, threadOpacity:{value:visual.opacity}};
+  let visual = visualsOf({...appearance, activityStrength:appearance.activityStrength ?? appearance.activity?.strength});
+  const uniforms = {threadTime:{value:0}, threadReveal:{value:1}, threadMotion:{value:appearance.amplitude}, threadSpeed:{value:visual.speed}, threadBrightness:{value:visual.brightness}, threadOpacity:{value:visual.opacity}, threadActivity:{value:.08}, threadActivityStrength:{value:appearance.activity ? (visual.activityStrength ?? .65) : 0}};
   const materials=[];
   doll.armature.traverse(mesh => {
     if(!mesh.isMesh)return;
@@ -33,7 +37,7 @@ export function attachFilaments(doll, appearance) {
     material.toneMapped=false;
     material.onBeforeCompile=shader=>{
       Object.assign(shader.uniforms,uniforms);
-      const declarations='uniform float threadTime; uniform float threadReveal; uniform float threadMotion; uniform float threadSpeed; uniform float threadBrightness; uniform float threadOpacity; varying vec2 threadUV; varying vec3 threadNormal; varying vec3 threadPoint;\n';
+      const declarations='uniform float threadTime; uniform float threadReveal; uniform float threadMotion; uniform float threadSpeed; uniform float threadBrightness; uniform float threadOpacity; uniform float threadActivity; uniform float threadActivityStrength; varying vec2 threadUV; varying vec3 threadNormal; varying vec3 threadPoint;\n';
       shader.vertexShader=declarations+shader.vertexShader;
       shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
         threadUV=uv; threadPoint=position; threadNormal=normalize(normalMatrix*normal);
@@ -61,6 +65,15 @@ export function attachFilaments(doll, appearance) {
         float pulse=.68+.32*sin(t*1.1-threadUV.y*18.0+flow.x*7.0);
         outgoingLight*= (threads*.80+halo*.06)*(1.25+rim*.65)*relief*(.85+pulse*.5)*threadReveal;
         float edgeFade=smoothstep(.065,.115,threadUV.y);
+        float drift=threadTime*.23;
+        float a=softGlow(threadUV,vec2(.38+.075*sin(drift),.79+.048*cos(drift*.8)),vec2(.090,.066));
+        float b=softGlow(threadUV,vec2(.63+.060*cos(drift*.7),.83+.057*sin(drift*.9)),vec2(.080,.072));
+        float c=softGlow(threadUV,vec2(.51+.10*sin(drift*.6+2.0),.91+.025*cos(drift)),vec2(.11,.047));
+        float breathing=.68+.32*sin(threadTime*.65);
+        float beat=.60+.40*sin(threadTime*(1.0+threadActivity*.7)+threadUV.x*8.0);
+        float forehead=smoothstep(.63,.71,threadUV.y)*(1.0-smoothstep(.97,1.03,threadUV.y));
+        float life=(a*.9+b*.8+c*.45)*forehead*(.25*breathing+threadActivity*(.8+beat*.8))*threadActivityStrength;
+        outgoingLight*=1.0+life*2.2;
         outgoingLight*=edgeFade*contourFade*islands;
         diffuseColor.a*=(threads*.70+halo*.045)*(.75+rim*.25)*threadReveal*edgeFade*contourFade*islands;
       `:`
@@ -79,14 +92,25 @@ export function attachFilaments(doll, appearance) {
   });
   doll.scene.background=null; doll.renderer.setClearColor(0x000000,0);
   doll.controls.target.set(0,1.67,0); doll.camera.position.set(0,1.67,2.70); doll.controls.update(); doll.cameraClock=null;
-  let target=1,raf,disposed=false;const started=performance.now();let previous=started,measuredAt=started,frame=doll.renderer.info.render.frame;
+  let target=1,raf,disposed=false;let remote=null, audioLevel=0;
+  const audioData=new Uint8Array(doll.audioAnalyzerNode?.fftSize || 256);
+  const started=performance.now();let previous=started,measuredAt=started,frame=doll.renderer.info.render.frame;
   const tick=now=>{
     if(disposed)return;
     const dt=Math.min(.1,(now-previous)/1000);previous=now;
     uniforms.threadTime.value=(now-started)/1000;
+    let speaking=Boolean(doll.isSpeaking || doll.isAudioPlaying);
+    audioLevel=0;
+    if(remote && now-remote.at<400) {speaking=remote.speaking;audioLevel=remote.rms;}
+    else if(speaking && doll.audioAnalyzerNode) {
+      doll.audioAnalyzerNode.getByteTimeDomainData(audioData);
+      let energy=0;for(let i=0;i<audioData.length;i++){const v=(audioData[i]-128)/128;energy+=v*v;}
+      audioLevel=Math.sqrt(energy/audioData.length);
+    }
+    uniforms.threadActivity.value=advanceActivity(uniforms.threadActivity.value,audioLevel,speaking,dt);
     uniforms.threadReveal.value+=(target-uniforms.threadReveal.value)*(1-Math.exp(-dt*5));
     const stage=document.querySelector('#composite-stage');
-    if(stage)stage.dataset.faceReveal=uniforms.threadReveal.value.toFixed(3);
+    if(stage){stage.dataset.faceReveal=uniforms.threadReveal.value.toFixed(3);stage.dataset.lightActivity=uniforms.threadActivity.value.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';}
     if(now-measuredAt>2000){
       const output=document.querySelector('#face-performance');
       const fps=Math.round((doll.renderer.info.render.frame-frame)*1000/(now-measuredAt));
@@ -96,5 +120,5 @@ export function attachFilaments(doll, appearance) {
     raf=requestAnimationFrame(tick);
   };
   raf=requestAnimationFrame(tick);
-  return {tune(patch){visual=visualsOf({...visual,...patch}); uniforms.threadBrightness.value=visual.brightness;uniforms.threadOpacity.value=visual.opacity;uniforms.threadSpeed.value=visual.speed;materials.forEach(m=>{m.opacity=visual.opacity;});return {...visual};},reveal(value){target=value;},dispose(){disposed=true;cancelAnimationFrame(raf);},get revealValue(){return uniforms.threadReveal.value;}};
+  return {tune(patch){visual=visualsOf({...visual,...patch}); uniforms.threadBrightness.value=visual.brightness;uniforms.threadOpacity.value=visual.opacity;uniforms.threadSpeed.value=visual.speed;uniforms.threadActivityStrength.value=appearance.activity ? (visual.activityStrength ?? .65) : 0;materials.forEach(m=>{m.opacity=visual.opacity;});return {...visual};},react(rms,speaking){remote={rms:Math.min(1,Math.max(0,Number(rms)||0)),speaking:Boolean(speaking),at:performance.now()};},get audioLevel(){return audioLevel;},get activityLevel(){return uniforms.threadActivity.value;},reveal(value){target=value;},dispose(){disposed=true;cancelAnimationFrame(raf);},get revealValue(){return uniforms.threadReveal.value;}};
 }
