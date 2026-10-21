@@ -7,3 +7,6 @@ node_modules/
 
 .local-preview/
 public/profiles/
+
+# Blender's recoverable automatic backups stay local; the working .blend is tracked.
+blender/002/*.blend[0-9]

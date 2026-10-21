@@ -1,0 +1,3 @@
+Visible mask geometry: original procedural sculpt and filaments created for this project. No MakeHuman visible mesh is included in this profile.
+Reference 002: user-provided visual guide; its bitmap is registered to the new sculpt and embedded as a surface texture. No ownership claim is assigned to the reference.
+Generated front-mask mesh and morph implementation: project source code terms.

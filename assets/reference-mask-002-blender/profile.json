@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "id": "reference-mask-002-blender",
+  "name": "Маска 002 · Blender · кандидат",
+  "model": "reference-mask.glb",
+  "body": "M",
+  "cameraView": "head",
+  "appearance": {
+    "type": "filaments",
+    "style": "reference-mask",
+    "color": "#ffffff",
+    "opacity": 1,
+    "brightness": 1,
+    "speed": 0.7,
+    "amplitude": 0.00035,
+    "activity": {
+      "type": "neural-glow",
+      "strength": 0.4
+    }
+  },
+  "defaults": {
+    "mood": "neutral"
+  }
+}
