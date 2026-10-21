@@ -17,3 +17,5 @@ docker restart avatarnode-web
 ```
 
 Контейнер `avatarnode-web` сидит в сети `web_network` и слушает порт `3000`. Наружу порт не опубликован. В Nginx Proxy Manager сайт `avatar.ganzheitler.cloud` смотрит на `http://avatarnode-web:3000`.
+
+Профили кукол, установка пакетов, совместимость, сохранение и локальная проверка: [PROFILES.md](PROFILES.md).

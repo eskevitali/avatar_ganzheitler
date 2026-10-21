@@ -4,3 +4,6 @@ secrets/
 !.env.example
 *.log
 node_modules/
+
+.local-preview/
+public/profiles/

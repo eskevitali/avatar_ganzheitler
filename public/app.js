@@ -1,4 +1,5 @@
 import {lipKeys, speechMouth} from './mouth.mjs';
+import {lipPoses, settingsOf} from './profiles.mjs';
 
 const login = document.querySelector('#login');
 const studio = document.querySelector('#studio');
@@ -31,36 +32,106 @@ const markPressed = (selector, value, attr) => {
   }
 };
 
-const ensureHead = async () => {
-  if (head) return head;
-  if (booting) return booting;
-  booting = (async () => {
-    setState('Загружаю куклу…');
+const profileSelect = document.querySelector('#profile');
+const saveProfileButton = document.querySelector('#save-profile');
+let profiles = [];
+let profileSettings = {};
+let activeProfile = null;
+let currentMood = 'neutral';
+let switching = false;
+
+const disposeHead = (doll) => {
+  if (!doll) return;
+  const node = doll.nodeAvatar;
+  try { doll.dispose(); }
+  finally {
+    doll.audioCtx?.close().catch(() => {});
+    node?.remove();
+  }
+};
+const switchProfile = async (id) => {
+  if (playing || switching) return;
+  const profile = profiles.find(p => p.id === id);
+  if (!profile || (activeProfile?.id === id && head)) return;
+  switching = true;
+  profileSelect.disabled = true;
+  saveProfileButton.disabled = true;
+  setState('Загружаю профиль…');
+  let candidate;
+  const node = document.createElement('div');
+  node.className = 'avatar-layer';
+  node.style.visibility = 'hidden';
+  dollNode.append(node);
+  try {
+    const settings = settingsOf(profileSettings[id] || profile.defaults);
     const {TalkingHead} = await import('./vendor/talkinghead.mjs');
-    const doll = new TalkingHead(dollNode, {
-      lipsyncModules: ['en'],
-      lipsyncLang: 'en',
-      cameraView: 'head',
+    candidate = new TalkingHead(node, {
+      lipsyncModules: ['en'], lipsyncLang: 'en', cameraView: profile.cameraView,
       modelPixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     });
-    await doll.showAvatar({
-      url: '/dolls/brunette.glb',
-      body: 'F',
-      avatarMood: 'neutral',
-      lipsyncLang: 'en',
-    });
-    doll.setView('head');
-    head = doll;
-    setState('Покой');
-    return doll;
-  })();
-  try {
-    return await booting;
+    await candidate.showAvatar({url: profile.url, body: profile.body, avatarMood: settings.mood, lipsyncLang: 'en'});
+    candidate.setView(profile.cameraView);
+    // Commit only after loading succeeds; a failed candidate leaves the old doll usable.
+    if (activeProfile) profileSettings[activeProfile.id] = {mood: currentMood, lips: structuredClone(lipValues)};
+    disposeHead(head);
+    head = candidate;
+    activeProfile = profile;
+    currentMood = settings.mood;
+    for (const key of Object.keys(lipValues)) delete lipValues[key];
+    Object.assign(lipValues, settings.lips);
+    clearLip(head);
+    markPressed('[data-mood]', currentMood, 'mood');
+    profileSelect.value = id;
+    node.style.visibility = '';
+    setState(profile.name);
   } catch (error) {
-    booting = null;
-    setState('Кукла не загрузилась.', true);
+    try { disposeHead(candidate); } catch (cleanupError) { console.error('Profile cleanup failed', cleanupError); }
+    node.remove();
+    profileSelect.value = activeProfile?.id || '';
+    setState(`Профиль не загрузился: ${error.message}`, true);
     throw error;
+  } finally {
+    switching = false;
+    profileSelect.disabled = false;
+    saveProfileButton.disabled = !head;
   }
+};
+const ensureHead = async () => {
+  if (booting) await booting;
+  if (switching) throw new Error('Дождитесь загрузки профиля');
+  if (head) return head;
+  throw new Error('Выберите доступный профиль');
+};
+profileSelect.addEventListener('change', () => {
+  booting = switchProfile(profileSelect.value);
+  booting.catch(() => {}).finally(() => { booting = null; });
+});
+saveProfileButton.addEventListener('click', async () => {
+  if (!activeProfile || switching) return;
+  const id = activeProfile.id;
+  const settings = {mood: currentMood, lips: structuredClone(lipValues)};
+  saveProfileButton.disabled = true;
+  try {
+    const response = await fetch('/api/profile-settings', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({id, settings})});
+    if (!response.ok) throw new Error(await readError(response));
+    profileSettings[id] = (await response.json()).settings;
+    setState('Настройки профиля сохранены.');
+  } catch (error) { setState(error.message, true); }
+  finally { saveProfileButton.disabled = switching || !head; }
+});
+const loadProfiles = async () => {
+  const response = await fetch('/api/profiles');
+  if (!response.ok) throw new Error(await readError(response));
+  const result = await response.json();
+  profiles = result.profiles;
+  profileSettings = result.settings;
+  profileSelect.replaceChildren(...profiles.map(profile => {
+    const option = document.createElement('option');
+    option.value = profile.id; option.textContent = profile.name;
+    return option;
+  }));
+  await switchProfile('training');
+  document.querySelector('#profile-errors').textContent = result.errors.map(e => `${e.id}: ${e.message}`).join('\n');
 };
 
 const voiceInput = document.querySelector('#voice-id');
@@ -98,7 +169,8 @@ const showStudio = (session) => {
   if (studio) studio.hidden = false;
   applyVoiceSettings(session);
   if (session.tts !== 'configured') setState('Ключ ElevenLabs на сервере ещё не задан. Мимику уже можно смотреть.', true);
-  ensureHead().catch(() => {});
+  booting = loadProfiles();
+  booting.catch(error => setState(error.message, true)).finally(() => { booting = null; });
 };
 
 for (const button of document.querySelectorAll('[data-model]')) {
@@ -111,19 +183,15 @@ document.querySelector('#save-voice').addEventListener('click', () => {
 
 for (const button of document.querySelectorAll('[data-mood]')) {
   button.addEventListener('click', async () => {
+    if (switching || !head) return;
     const doll = await ensureHead();
     doll.setMood(button.dataset.mood);
+    currentMood = button.dataset.mood;
     markPressed('[data-mood]', button.dataset.mood, 'mood');
     if (!playing) setState(button.textContent);
   });
 }
 
-const lipPoses = {
-  PP: {viseme_PP: 1, mouthClose: 0.55, jawOpen: 0.02},
-  aa: {viseme_aa: 1, jawOpen: 0.85, mouthOpen: 0.45},
-  O: {viseme_O: 1, jawOpen: 0.42, mouthFunnel: 0.8, mouthPucker: 0.45},
-  I: {viseme_I: 1, jawOpen: 0.16, mouthSmileLeft: 0.7, mouthSmileRight: 0.7, mouthStretchLeft: 0.35, mouthStretchRight: 0.35},
-};
 const lipLabels = {
   viseme_PP: 'Смыкание М',
   viseme_aa: 'Открытое А',
@@ -191,7 +259,7 @@ const renderSliders = (name) => {
     const output = document.createElement('output');
     output.textContent = input.value;
     input.addEventListener('input', () => {
-      if (!head || playing || selectedLip !== name) return;
+      if (!head || playing || switching || selectedLip !== name) return;
       const next = Number(input.value) / 100;
       lipValues[name][key] = next;
       output.textContent = input.value;
@@ -232,7 +300,7 @@ const selectLip = async (name) => {
 };
 
 for (const button of document.querySelectorAll('[data-viseme]')) {
-  button.addEventListener('click', () => selectLip(button.dataset.viseme));
+  button.addEventListener('click', () => selectLip(button.dataset.viseme).catch(error => setState(error.message, true)));
 }
 
 document.querySelector('#lip-reset').addEventListener('click', () => clearLip(head));
@@ -252,7 +320,7 @@ document.querySelector('#logout')?.addEventListener('click', async () => {
 });
 
 const waitUntilQuiet = (doll, duration) => new Promise((resolve) => {
-  const timeout = setTimeout(resolve, duration + 1200);
+  const timeout = setTimeout(() => { clearInterval(timer); resolve(); }, duration + 1200);
   let heard = false;
   const timer = setInterval(() => {
     if (doll.isSpeaking || doll.isAudioPlaying) heard = true;
@@ -307,9 +375,10 @@ const loadClip = async (phrase) => {
 };
 
 const speakPhrase = async (phrase) => {
-  if (!phrase || playing) return;
+  if (!phrase || playing || switching) return;
   speakButton.disabled = true;
   playing = true;
+  profileSelect.disabled = true;
   setLipLocked(true);
   try {
     const doll = await ensureHead();
@@ -323,6 +392,7 @@ const speakPhrase = async (phrase) => {
     setState(error?.name === 'EncodingError' ? 'Браузер не смог проиграть звук.' : 'Не удалось произнести фразу.', true);
   } finally {
     playing = false;
+    profileSelect.disabled = false;
     speakButton.disabled = false;
     setLipLocked(false);
     if (selectedLip && head) applyLipFixed(head, selectedLip);

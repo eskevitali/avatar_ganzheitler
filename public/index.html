@@ -31,8 +31,15 @@
 
     <section id="studio" hidden>
       <div id="doll" aria-label="Кукла"></div>
-      <p class="hint">Учебная кукла. Свою маску подключим отдельно.</p>
+      <p class="hint">Выберите установленный профиль куклы.</p>
       <section class="card controls">
+        <div>
+          <label for="profile">Профиль куклы</label>
+          <select id="profile" disabled aria-label="Профиль куклы"></select>
+          <button type="button" id="save-profile" disabled>Сохранить губы и мимику профиля</button>
+          <p class="hint">Настройки сохраняются отдельно для каждой куклы. Установка пакета описана в документации.</p>
+          <p id="profile-errors" class="status error" role="alert"></p>
+        </div>
         <div>
           <p class="label">Мимика</p>
           <div class="choices">

@@ -4746,7 +4746,8 @@ class TalkingHead {
     this.stop();
     this.stopSpeaking();
     this.streamStop();
-    this.stopAnimation();
+    // A failed first load has no poseBase yet; stopAnimation resets the pose.
+    if (this.armature) this.stopAnimation();
 
     // Cancel animation frame to prevent potential memory leak
     if (this._raf !== null) {

@@ -5,10 +5,14 @@ import {createServer} from 'node:http';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+import {catalog, readSettings, saveSettings} from './profile-store.mjs';
+import {settingsOf} from './public/profiles.mjs';
+
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
 const port = Number(process.env.PORT || 3000);
 const password = process.env.APP_PASSWORD || '';
+const devHttp = process.env.DEV_HTTP === '1';
 const secret = process.env.APP_SECRET || '';
 const apiKey = process.env.ELEVENLABS_API_KEY || '';
 const voiceModels = {
@@ -16,6 +20,7 @@ const voiceModels = {
   eleven_v3_conversational: 'v3 Conversational',
 };
 const settingsPath = process.env.TTS_SETTINGS_PATH || '/data/settings/tts.json';
+const profileSettingsPath = process.env.PROFILE_SETTINGS_PATH || path.join(path.dirname(settingsPath), 'profiles.json');
 const envVoice = process.env.ELEVENLABS_VOICE_ID || '';
 const envModel = process.env.ELEVENLABS_MODEL_ID || '';
 let activeVoice = envVoice;
@@ -36,6 +41,7 @@ const types = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.glb': 'model/gltf-binary',
+  '.json': 'application/json; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
 };
 
@@ -95,7 +101,7 @@ const readSession = (cookieHeader) => {
 };
 
 const cookie = (token, maxAge) =>
-  `avatar_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`;
+  `avatar_session=${token}; HttpOnly; ${devHttp ? '' : 'Secure; '}SameSite=Lax; Path=/; Max-Age=${maxAge}`;
 
 const send = (response, status, body, headers = {}) => {
   const data = Buffer.from(body);
@@ -295,6 +301,27 @@ const server = createServer(async (request, response) => {
         return;
       }
       sendJson(response, 200, {ok: true, tts: ttsState(), model: activeModel, voiceId: activeVoice});
+      return;
+    }
+
+    if (url.pathname === '/api/profiles' && request.method === 'GET') {
+      if (!session) return sendJson(response, 401, {error: {message: 'Нужно войти.'}});
+      const result = await catalog(publicDir);
+      sendJson(response, 200, {...result, settings: await readSettings(profileSettingsPath)});
+      return;
+    }
+    if (url.pathname === '/api/profile-settings' && request.method === 'POST') {
+      if (!session) return sendJson(response, 401, {error: {message: 'Нужно войти.'}});
+      const body = await readBody(request);
+      const {profiles} = await catalog(publicDir);
+      if (!profiles.some(p => p.id === body?.id)) return sendJson(response, 400, {error: {message: 'Неизвестный профиль.'}});
+      let settings;
+      try { settings = settingsOf(body.settings); }
+      catch (e) { return sendJson(response, 400, {error: {message: e.message}}); }
+      try {
+        await saveSettings(profileSettingsPath, body.id, settings);
+        sendJson(response, 200, {stored: true, settings});
+      } catch { sendJson(response, 500, {error: {message: 'Настройки профиля не записались на диск.'}}); }
       return;
     }
 
