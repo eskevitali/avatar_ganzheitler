@@ -1,0 +1,3 @@
+Accepted appearance/reference: user-supplied artwork and user-authored fitting, no new ownership claim.
+Underlying MakeHuman base and official extra-targets: CC0-1.0; see assets/sources/makehuman and makehuman-extra-targets.
+See source/checkpoint.json for untouched accepted source and texture hashes.

@@ -1,0 +1,56 @@
+{
+  "id": "user-mask",
+  "model": "user-mask-49c38f1fa339.glb",
+  "sha256": "49c38f1fa33919499abea88ac4ba58ce39035dd0f0826daf6912a99359469d14",
+  "bytes": 3904344,
+  "accepted_source": "source/user-accepted-2026-10-23.blend",
+  "appearance_status": "Accepted blink/UV retained; requested subtle attention motion added 2026-10-24",
+  "verification": {
+    "accepted_neutral_geometry_uv_texture": "unchanged from956f066a5724",
+    "accepted_blink_targets": "unchanged",
+    "eyeLook_targets": "8 globe-only rotations, skin/lid/bridge untouched",
+    "tts_total_new_requests": 1,
+    "attention_voice_test": "restored cached clip, zero new TTS requests",
+    "transition_ms": 2400
+  },
+  "motion_controls": {
+    "version": "controls-2026-10-24",
+    "headMotion": [
+      0,
+      3
+    ],
+    "eyeMotion": [
+      0,
+      3
+    ],
+    "default": 1,
+    "idle_enabled": true,
+    "auto_save": "per-profile server settings with local fallback",
+    "clean_view": "paired actual motion stream",
+    "model_unchanged": true
+  },
+  "continuous_motion": {
+    "version": "continuous-2026-10-24",
+    "curve": "C2 cubic B-spline noise, shared wall clock and seed",
+    "speech_reset": false,
+    "held_targets": false,
+    "background_source_dependency": false
+  },
+  "emotions": {
+    "range": [
+      0,
+      2
+    ],
+    "default": 1,
+    "method": "bounded local weights only, no GLB/UV/image edits",
+    "moods": [
+      "neutral",
+      "happy",
+      "sad",
+      "fear",
+      "angry"
+    ],
+    "live_frontend_api": "setDialogueMood({mood,intensity})",
+    "this_update_tts_requests": 1
+  }
+}
