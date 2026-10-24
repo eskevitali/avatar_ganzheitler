@@ -9,6 +9,7 @@ export function attachUserMask(doll, appearance) {
   let revealFrom=1,revealStarted=performance.now();
   let visual=visualsOf(appearance),target=1,reveal=1,activity=.08,audioLevel=0,remote=null,disposed=false;
   const uniforms={uTime:{value:0},uReveal:{value:1},uActivity:{value:.08},uBrightness:{value:visual.brightness},uOpacity:{value:visual.opacity},uSpeed:{value:visual.speed},uStrength:{value:appearance.activity?.strength ?? .5}};
+  doll.animTemplateBlink={name:'blink',alt:[{delay:[2400,6500,1,2],dt:[120,65,170],vs:{eyeBlinkLeft:[1,1,0],eyeBlinkRight:[1,1,0]}}]};
   const meshes=[];doll.armature.traverse(m=>{if(m.isMesh)meshes.push(m);});
   const pivot=new THREE.Group();pivot.name='UserMaskMotion';pivot.position.set(0,1.67,0);doll.armature.add(pivot);
   const boundary=[];
@@ -102,7 +103,7 @@ export function attachUserMask(doll, appearance) {
     const phase=Math.min(1,Math.max(0,(now-revealStarted)/transitionMs)),ease=phase*phase*(3-2*phase);reveal=revealFrom+(target-revealFrom)*ease;
     uniforms.uReveal.value=reveal;uniforms.uTime.value=(now-started)/1000;uniforms.uActivity.value=activity;
     const stage=document.querySelector('#composite-stage');
-    if(stage){stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=yaw.toFixed(4);stage.dataset.headPitch=pitch.toFixed(4);stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
+    if(stage){stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=yaw.toFixed(4);stage.dataset.headPitch=pitch.toFixed(4);stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
     if(now-measured>2000){const fps=Math.round((doll.renderer.info.render.frame-frame)*1000/(now-measured));const output=document.querySelector('#face-performance');if(output){output.textContent=`Ваша маска: ${fps} fps · ${doll.renderer.info.render.triangles.toLocaleString('ru')} треугольников`;output.dataset.fps=String(fps);}measured=now;frame=doll.renderer.info.render.frame;}
     raf=requestAnimationFrame(tick);
   };raf=requestAnimationFrame(tick);

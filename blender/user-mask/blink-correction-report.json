@@ -1,0 +1,10 @@
+{
+  "bridge_and_opposite_eye_delta_zero": true,
+  "brow_and_nose_outside_local_eye_zone_delta_zero": true,
+  "neutral_basis_changed_vertices": 0,
+  "source_image_pixels_changed": false,
+  "uv_change_scope": "local eye area plus separate globe projection",
+  "uv_changed_loops": 5292,
+  "eye_geometry": "Existing closed socket topology, local blink depth correction; no retopology",
+  "shader_eye_hiding": false
+}

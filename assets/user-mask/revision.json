@@ -1,8 +1,21 @@
 {
   "id": "user-mask",
-  "model": "user-mask-49ca2e8a2ac4.glb",
-  "sha256": "49ca2e8a2ac42e5b58f4edcc41e6a076276eb8098d248a06fde3278afc50936e",
-  "bytes": 3987876,
+  "model": "user-mask-956f066a5724.glb",
+  "sha256": "956f066a57249629ee589a7eaac84f4173959bad8edbc333c7d94d3f423b7245",
+  "bytes": 3980820,
   "accepted_source": "source/user-accepted-2026-10-23.blend",
-  "appearance_status": "user accepted browser preview, 2026-10-23"
+  "appearance_status": "User accepted blink/UV correction, 2026-10-24",
+  "verification": {
+    "neutral_geometry": "byte-identical to accepted baseline",
+    "modified_morphs": [
+      "eyeBlinkLeft",
+      "eyeBlinkRight"
+    ],
+    "unchanged_morphs": 66,
+    "texture_pixels": "unchanged",
+    "uv": "local eye alignment corrected",
+    "tts_requests": 1,
+    "cached_repeat": "verified",
+    "transitions_ms": 2400
+  }
 }
