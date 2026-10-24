@@ -12,5 +12,21 @@
     "tts_total_new_requests": 1,
     "attention_voice_test": "restored cached clip, zero new TTS requests",
     "transition_ms": 2400
+  },
+  "motion_controls": {
+    "version": "controls-2026-10-24",
+    "headMotion": [
+      0,
+      3
+    ],
+    "eyeMotion": [
+      0,
+      3
+    ],
+    "default": 1,
+    "idle_enabled": true,
+    "auto_save": "per-profile server settings with local fallback",
+    "clean_view": "paired actual motion stream",
+    "model_unchanged": true
   }
 }

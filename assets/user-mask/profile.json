@@ -89,6 +89,14 @@
         "mouthStretchLeft": 0,
         "mouthStretchRight": 0
       }
+    },
+    "visuals": {
+      "opacity": 0.95,
+      "brightness": 1,
+      "speed": 0.7,
+      "activityStrength": 0.5,
+      "headMotion": 1,
+      "eyeMotion": 1
     }
   }
 }

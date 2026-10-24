@@ -11,3 +11,11 @@ for(let i=0;i<3600;i++){
 }
 assert.ok(calls<200,'random targets must not be generated every frame');assert.ok(maxStep<.0015,'no abrupt head jumps');assert.ok(compensated>100,'eyes compensate head yaw toward listener');
 console.log('Bounded, smooth, nonperiodic attention and listener compensation verified');
+
+const visible=createAttentionMotion({},()=>.85);visible.setIntensity(3,0);let m;
+for(let i=0;i<600;i++)m=visible.step(1/60,false);
+assert.ok(Math.abs(m.yaw)>3*Math.PI/180,'high head setting visible in idle');assert.ok(Math.abs(m.eyeYaw)<1e-8,'eyes independently off');
+visible.setIntensity(0,3);for(let i=0;i<600;i++)m=visible.step(1/60,false);
+assert.ok(Math.abs(m.yaw)<1e-6,'zero head returns to neutral');assert.ok(Math.abs(m.eyeYaw)>Math.PI/180,'eyes independently visible without head motion');
+visible.setIntensity(0,0);for(let i=0;i<600;i++)m=visible.step(1/60,false);
+assert.ok(Math.abs(m.eyeYaw)<1e-6&&Math.abs(m.yaw)<1e-6,'both zero smoothly return to neutral');

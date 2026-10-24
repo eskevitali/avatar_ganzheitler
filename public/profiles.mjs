@@ -15,6 +15,9 @@ export function visualsOf(value) {
     if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) throw new Error(`visuals.${key}: вне диапазона`);
     result[key] = n;
   }
+  for(const key of ['headMotion','eyeMotion']) {
+    const n=value[key]??1;if(typeof n!=='number'||!Number.isFinite(n)||n<0||n>3)throw new Error(`visuals.${key}: вне диапазона`);result[key]=n;
+  }
   if (value.activityStrength !== undefined) {
     const n=value.activityStrength;
     if (typeof n!=='number' || !Number.isFinite(n) || n<0 || n>1) throw new Error('visuals.activityStrength: вне диапазона');

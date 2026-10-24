@@ -88,19 +88,40 @@ let switching = false;
 const profileSnapshot = () => ({mood:currentMood, lips:structuredClone(lipValues), ...(faceVisuals ? {visuals:{...faceVisuals}} : {})});
 const syncVisualInputs = () => {
   if (!faceVisuals) return;
-  for (const key of ['opacity','brightness','speed','activityStrength']) {
-    const enabled=key!=='activityStrength' || Boolean(activeProfile?.appearance?.activity);
+  for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion']) {
+    const isMotion=['headMotion','eyeMotion'].includes(key);
+    const enabled=isMotion?activeProfile?.id==='user-mask':key!=='activityStrength'||Boolean(activeProfile?.appearance?.activity);
+    document.querySelector('#face-motion-controls').hidden=activeProfile?.id!=='user-mask';
     document.querySelector(`#face-${key}`).closest('label').hidden=!enabled;
     if(!enabled)continue;
     document.querySelector(`#face-${key}`).value=String(Math.round(faceVisuals[key]*100));
     document.querySelector(`#face-${key}-value`).textContent=`${Math.round(faceVisuals[key]*100)}%`;
   }
 };
-for (const key of ['opacity','brightness','speed','activityStrength']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
+for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
   if (!head?.filaments || switching) return;
   faceVisuals=head.filaments.tune({[key]:Number(event.target.value)/100});
+  if(['headMotion','eyeMotion'].includes(key))saveMotionSoon();
   syncVisualInputs(); if (!playing) facePhase('preview'); else publishScene();
 });
+
+const readMotion = id => {
+  try {const value=JSON.parse(localStorage.getItem(`avatar.motion.v1.${id}`));if(value&&['headMotion','eyeMotion'].every(k=>typeof value[k]==='number'&&Number.isFinite(value[k])&&value[k]>=0&&value[k]<=3))return value;}catch{}return {};
+};
+let motionSaveTimer,motionSaveChain=Promise.resolve();
+function saveMotionSoon(){
+  const profile=activeProfile,id=profile.id,motion={headMotion:faceVisuals.headMotion,eyeMotion:faceVisuals.eyeMotion};
+  try{localStorage.setItem(`avatar.motion.v1.${id}`,JSON.stringify(motion));}catch{}
+  const status=document.querySelector('#face-motion-save');status.textContent='Сохраняю движение…';
+  clearTimeout(motionSaveTimer);motionSaveTimer=setTimeout(()=>{
+    const prior=profileSettings[id]||profile.defaults;
+    const settings=settingsOf({...prior,visuals:{...visualsOf({...profile.appearance,...prior.visuals}),...motion}});
+    motionSaveChain=motionSaveChain.catch(()=>{}).then(async()=>{
+      try{const response=await fetch('/api/profile-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,settings})});if(!response.ok)throw new Error();profileSettings[id]=(await response.json()).settings;if(activeProfile?.id===id)status.textContent='Движение сохранено для этой маски.';}
+      catch{if(activeProfile?.id===id)status.textContent='Движение сохранено в этом браузере; сервер сейчас недоступен.';}
+    });
+  },350);
+}
 
 const disposeHead = (doll) => {
   if (!doll) return;
@@ -127,6 +148,7 @@ const switchProfile = async (id) => {
   dollNode.append(node);
   try {
     const settings = settingsOf(profileSettings[id] || profile.defaults);
+    if(id==='user-mask')settings.visuals=visualsOf({...profile.appearance,...settings.visuals,...readMotion(id)});
     const {TalkingHead} = await import('./vendor/talkinghead.mjs');
     candidate = new TalkingHead(node, {
       lipsyncModules: ['en'], lipsyncLang: 'en', cameraView: profile.cameraView,
@@ -230,6 +252,7 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
   if (!message || typeof message !== 'object') return;
   if (!compositeClean) { if (message.kind === 'ready') publishScene(); return; }
   if (!head || switching) return;
+  if(message.kind==='motion'&&!sceneApplying){head.filaments?.followMotion?.(message.values);return;}
   if (message.kind === 'pose' && !sceneApplying) {
     for (const key of lipKeys) {
       const value=message.values?.[key];
@@ -263,6 +286,7 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
   } catch { setState('Не удалось применить параметры общего вида.',true); }
   finally { sceneApplying=false; }
 };
+if(!compositeClean)setInterval(()=>{if(activeProfile?.id==='user-mask'&&head?.filaments?.motion)sceneChannel?.postMessage({kind:'motion',values:head.filaments.motion});},60);
 let wasSharingPose=false;
 if (!compositeClean) setInterval(()=>{
   if(head && (head.isSpeaking || head.isAudioPlaying) && activeProfile?.appearance) {

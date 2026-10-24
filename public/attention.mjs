@@ -9,18 +9,19 @@ export function attentionOf(raw={}) {
 }
 export function createAttentionMotion(raw,random=Math.random){
   const c=attentionOf(raw),rad=Math.PI/180;let at=0,next=0,nextEye=0,wasSpeaking=false,centerUntil=0;
+  let headIntensity=1,eyeIntensity=1;
   const a={yaw:0,pitch:0,eyeYaw:0,eyePitch:0},vel={...a};let yawTarget=0,pitchTarget=0,eyeX=0,eyeY=0;
   const sample=(lo,hi)=>lo+(hi-lo)*random();
   const damp=(key,target,dt,w)=>{vel[key]+=((target-a[key])*w*w-2*w*vel[key])*dt;a[key]+=vel[key]*dt;};
-  return {step(dt,speaking){
+  return {setIntensity(head,eyes){headIntensity=Math.max(0,Math.min(3,head));eyeIntensity=Math.max(0,Math.min(3,eyes));},step(dt,speaking){
     dt=Math.min(.05,Math.max(0,dt));at+=dt*1000;
     if(wasSpeaking&&!speaking){centerUntil=at+1800;next=centerUntil;yawTarget=pitchTarget=0;}
     wasSpeaking=speaking;
-    if(at>=next&&at>=centerUntil){const scale=speaking?1:.5;yawTarget=sample(-1,1)*c.headYawDegrees*rad*scale;pitchTarget=sample(-1,1)*c.headPitchDegrees*rad*scale;next=at+sample(c.intervalMinMs,c.intervalMaxMs);}
-    if(at>=nextEye){eyeX=sample(-.004,.004);eyeY=sample(-.002,.002);nextEye=at+sample(2600,5500);}
-    damp('yaw',yawTarget,dt,2);damp('pitch',pitchTarget,dt,2);
-    const limit=c.eyeDegrees*rad,clamp=v=>Math.min(limit,Math.max(-limit,v));
-    damp('eyeYaw',clamp(-a.yaw*c.compensation+eyeX),dt,3.8);damp('eyePitch',clamp(-a.pitch*c.compensation+eyeY),dt,3.8);
+    if(at>=next&&at>=centerUntil){yawTarget=(random()<.5?-1:1)*sample(.4,1);pitchTarget=sample(-1,1);next=at+sample(c.intervalMinMs,c.intervalMaxMs);}
+    if(at>=nextEye){eyeX=(random()<.5?-1:1)*sample(.35,.65);eyeY=sample(-.25,.25);nextEye=at+sample(2600,5500);}
+    damp('yaw',yawTarget*c.headYawDegrees*rad*headIntensity,dt,2);damp('pitch',pitchTarget*c.headPitchDegrees*rad*headIntensity,dt,2);
+    const limit=Math.min(6,c.eyeDegrees*eyeIntensity)*rad,clamp=v=>Math.min(limit,Math.max(-limit,v));
+    damp('eyeYaw',clamp((-a.yaw*c.compensation+eyeX*c.eyeDegrees*rad)*eyeIntensity),dt,3.8);damp('eyePitch',clamp((-a.pitch*c.compensation+eyeY*c.eyeDegrees*rad)*eyeIntensity),dt,3.8);
     return {...a};
   }};
 }
