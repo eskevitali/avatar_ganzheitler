@@ -1,3 +1,4 @@
+import {createEmotionLayer} from './emotions.mjs';
 import {createAttentionMotion} from './attention.mjs';
 import * as THREE from 'three';
 import {visualsOf} from './profiles.mjs';
@@ -6,15 +7,18 @@ import {advanceActivity} from './activity.mjs';
 // User-authored neutral geometry and its exact baked UV projection stay intact.
 // Only renderer-owned bounded light/motion effects are added to the live mesh.
 export function attachUserMask(doll, appearance) {
-  const attention=createAttentionMotion(appearance.attention);
+  const attention=createAttentionMotion(appearance.attention,Math.random,{clock:()=>Date.now()/1000,seed:appearance.motionSeed});
   const transitionMs=appearance.transitionMs ?? 2400;
   let revealFrom=1,revealStarted=performance.now();
-  let visual=visualsOf(appearance),target=1,reveal=1,activity=.08,audioLevel=0,remote=null,remoteMotion=null,motionFrame=null,disposed=false;
+  let visual=visualsOf(appearance),target=1,reveal=1,activity=.08,audioLevel=0,remote=null,motionFrame=null,disposed=false;
   const uniforms={uTime:{value:0},uReveal:{value:1},uActivity:{value:.08},uBrightness:{value:visual.brightness},uOpacity:{value:visual.opacity},uSpeed:{value:visual.speed},uStrength:{value:appearance.activity?.strength ?? .5}};
   doll.animTemplateBlink={name:'blink',alt:[{delay:[2400,6500,1,2],dt:[120,65,170],vs:{eyeBlinkLeft:[1,1,0],eyeBlinkRight:[1,1,0]}}]};
+  const emotion=createEmotionLayer(appearance.mood,visual.emotionStrength);
   attention.setIntensity(visual.headMotion,visual.eyeMotion);
   // Keep automatic gaze from adding a second partial blink when looking down.
   for(const side of ['Left','Right'])if(doll.mtAvatar?.['eyeBlink'+side])doll.mtAvatar['eyeBlink'+side].limit=v=>Math.max(v,(doll.mtAvatar?.['browDown'+side]?.value||0)/2);
+  doll.animMoods={...doll.animMoods,neutral:{...doll.animMoods.neutral,baseline:{},anims:[...doll.animMoods.neutral.anims.filter(x=>!['mouth','misc','blink'].includes(x.name)),doll.animTemplateBlink]}};
+  doll.mtRandomized=['chestInhale'];doll.setMood('neutral');
   const meshes=[];doll.armature.traverse(m=>{if(m.isMesh)meshes.push(m);});
   const pivot=new THREE.Group();pivot.name='UserMaskMotion';pivot.position.set(0,1.67,0);doll.armature.add(pivot);
   const boundary=[];
@@ -96,23 +100,26 @@ export function attachUserMask(doll, appearance) {
   doll.controls.target.set(0,1.67,0);doll.camera.position.set(0,1.67,2.05);doll.controls.update();doll.cameraClock=null;
   const data=new Uint8Array(doll.audioAnalyzerNode?.fftSize || 256);
   let previous=performance.now(),started=previous,raf,measured=previous,frame=doll.renderer.info.render.frame;
+  const motionSamples=[];let sampledAt=0,previousMotionTime=performance.now();
   const tick=now=>{
-    if(disposed)return;const dt=Math.min(.05,(now-previous)/1000);previous=now;
+    if(disposed)return;const dt=Math.min(.15,(now-previous)/1000);previous=now;
     let speaking=Boolean(doll.isSpeaking || doll.isAudioPlaying);audioLevel=0;
     if(remote && now-remote.at<400){speaking=remote.speaking;audioLevel=remote.rms;}
     else if(speaking && doll.audioAnalyzerNode){doll.audioAnalyzerNode.getByteTimeDomainData(data);let e=0;for(const n of data)e+=((n-128)/128)**2;audioLevel=Math.sqrt(e/data.length);}
-    let motion=attention.step(dt,speaking);if(remoteMotion&&now-remoteMotion.at<1200){const k=1-Math.exp(-dt*16);for(const key of ['yaw','pitch','eyeYaw','eyePitch'])motion[key]=(motionFrame?.[key]??0)+k*(remoteMotion[key]-(motionFrame?.[key]??0));}motionFrame=motion;pivot.rotation.set(motion.pitch,motion.yaw,0);
+    const elapsed=(now-previousMotionTime)/1000;const motion=attention.step(elapsed,speaking);previousMotionTime=now;motionFrame=motion;pivot.rotation.set(motion.pitch,motion.yaw,0);
     // Own the existing eye-look channels; engine random eye/bone tracks cannot add
     // a second movement. Targets affect globe vertices only, never lids or bridge.
     doll.setFixedValue('eyesRotateY',motion.eyeYaw/(12*Math.PI/180));
     doll.setFixedValue('eyesRotateX',motion.eyePitch/(12*Math.PI/180));
+    const expression=emotion.step(elapsed,speaking,Math.max(doll.mtAvatar?.eyeBlinkLeft?.applied||0,doll.mtAvatar?.eyeBlinkRight?.applied||0));
+    for(const [key,value]of Object.entries(expression)){const mt=doll.mtAvatar?.[key];if(mt)for(let i=0;i<mt.ms.length;i++)mt.ms[i][mt.is[i]]=Math.min(1,Math.max(0,(mt.applied||0)+value));}
     activity=advanceActivity(activity,audioLevel,speaking,dt);
     const phase=Math.min(1,Math.max(0,(now-revealStarted)/transitionMs)),ease=phase*phase*(3-2*phase);reveal=revealFrom+(target-revealFrom)*ease;
     uniforms.uReveal.value=reveal;uniforms.uTime.value=(now-started)/1000;uniforms.uActivity.value=activity;
     const stage=document.querySelector('#composite-stage');
-    if(stage){stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=motion.yaw.toFixed(4);stage.dataset.headPitch=motion.pitch.toFixed(4);stage.dataset.motionBuild='controls-2026-10-24';stage.dataset.headMotion=String(visual.headMotion);stage.dataset.eyeMotion=String(visual.eyeMotion);stage.dataset.motionSource=remoteMotion&&now-remoteMotion.at<1200?'paired':'local';stage.dataset.eyeRendered=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].flatMap(k=>{const mt=doll.mtAvatar?.[k];return mt?.ms?.map((a,i)=>a[mt.is[i]])||[0];})));stage.dataset.eyeMorph=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].map(k=>doll.mtAvatar?.[k]?.value||0)));stage.dataset.eyeYaw=motion.eyeYaw.toFixed(5);stage.dataset.eyePitch=motion.eyePitch.toFixed(5);stage.dataset.gazeTarget='virtual-screen-listener';stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
+    if(stage){stage.dataset.emotionMood=emotion.mood;stage.dataset.emotionStrength=String(emotion.strength);stage.dataset.emotionWeights=JSON.stringify(expression);stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=motion.yaw.toFixed(4);stage.dataset.headPitch=motion.pitch.toFixed(4);stage.dataset.motionBuild='continuous-2026-10-24';if(now-sampledAt>=100){sampledAt=now;motionSamples.push([Number(((now-started)/1000).toFixed(3)),Number(motion.yaw.toFixed(7)),Number(motion.pitch.toFixed(7)),speaking?1:0]);if(motionSamples.length>256)motionSamples.shift();stage.dataset.motionSamples=JSON.stringify(motionSamples);}stage.dataset.headMotion=String(visual.headMotion);stage.dataset.eyeMotion=String(visual.eyeMotion);stage.dataset.motionSource='shared-clock';stage.dataset.eyeRendered=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].flatMap(k=>{const mt=doll.mtAvatar?.[k];return mt?.ms?.map((a,i)=>a[mt.is[i]])||[0];})));stage.dataset.eyeMorph=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].map(k=>doll.mtAvatar?.[k]?.value||0)));stage.dataset.eyeYaw=motion.eyeYaw.toFixed(5);stage.dataset.eyePitch=motion.eyePitch.toFixed(5);stage.dataset.gazeTarget='virtual-screen-listener';stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
     if(now-measured>2000){const fps=Math.round((doll.renderer.info.render.frame-frame)*1000/(now-measured));const output=document.querySelector('#face-performance');if(output){output.textContent=`Ваша маска: ${fps} fps · ${doll.renderer.info.render.triangles.toLocaleString('ru')} треугольников`;output.dataset.fps=String(fps);}measured=now;frame=doll.renderer.info.render.frame;}
     raf=requestAnimationFrame(tick);
   };raf=requestAnimationFrame(tick);
-  return {get motion(){return motionFrame&&{...motionFrame};},followMotion(values){if(!values||!['yaw','pitch','eyeYaw','eyePitch'].every(k=>Number.isFinite(values[k])))return;remoteMotion={yaw:THREE.MathUtils.clamp(values.yaw,-.16,.16),pitch:THREE.MathUtils.clamp(values.pitch,-.11,.11),eyeYaw:THREE.MathUtils.clamp(values.eyeYaw,-.105,.105),eyePitch:THREE.MathUtils.clamp(values.eyePitch,-.105,.105),at:performance.now()};},transitionMs,formationLeadMs:Math.round(transitionMs*.82),reveal(v){const next=v?1:0;if(next===target)return;revealFrom=reveal;revealStarted=performance.now();target=next;},get revealValue(){return reveal;},get audioLevel(){return audioLevel;},get activityLevel(){return activity;},react(rms,speaking){remote={rms:Math.min(1,Math.max(0,Number(rms)||0)),speaking:Boolean(speaking),at:performance.now()};},tune(patch){visual=visualsOf({...visual,...patch});attention.setIntensity(visual.headMotion,visual.eyeMotion);uniforms.uBrightness.value=visual.brightness;uniforms.uOpacity.value=visual.opacity;uniforms.uSpeed.value=visual.speed;uniforms.uStrength.value=visual.activityStrength ?? appearance.activity?.strength ?? .5;return {...visual};},dispose(){disposed=true;cancelAnimationFrame(raf);strandGeometry.dispose();strandMaterial.dispose();mistGeometry.dispose();mistMaterial.dispose();}};
+  return {setEmotion(mood){emotion.set(mood,visual.emotionStrength);},get motion(){return motionFrame&&{...motionFrame};},transitionMs,formationLeadMs:Math.round(transitionMs*.82),reveal(v){const next=v?1:0;if(next===target)return;revealFrom=reveal;revealStarted=performance.now();target=next;},get revealValue(){return reveal;},get audioLevel(){return audioLevel;},get activityLevel(){return activity;},react(rms,speaking){remote={rms:Math.min(1,Math.max(0,Number(rms)||0)),speaking:Boolean(speaking),at:performance.now()};},tune(patch){visual=visualsOf({...visual,...patch});attention.setIntensity(visual.headMotion,visual.eyeMotion);emotion.set(emotion.mood,visual.emotionStrength);uniforms.uBrightness.value=visual.brightness;uniforms.uOpacity.value=visual.opacity;uniforms.uSpeed.value=visual.speed;uniforms.uStrength.value=visual.activityStrength ?? appearance.activity?.strength ?? .5;return {...visual};},dispose(){disposed=true;cancelAnimationFrame(raf);strandGeometry.dispose();strandMaterial.dispose();mistGeometry.dispose();mistMaterial.dispose();}};
 }

@@ -18,6 +18,7 @@ export function visualsOf(value) {
   for(const key of ['headMotion','eyeMotion']) {
     const n=value[key]??1;if(typeof n!=='number'||!Number.isFinite(n)||n<0||n>3)throw new Error(`visuals.${key}: вне диапазона`);result[key]=n;
   }
+  const emotionStrength=value.emotionStrength??1;if(typeof emotionStrength!=='number'||!Number.isFinite(emotionStrength)||emotionStrength<0||emotionStrength>2)throw new Error('visuals.emotionStrength: вне диапазона');result.emotionStrength=emotionStrength;
   if (value.activityStrength !== undefined) {
     const n=value.activityStrength;
     if (typeof n!=='number' || !Number.isFinite(n) || n<0 || n>1) throw new Error('visuals.activityStrength: вне диапазона');

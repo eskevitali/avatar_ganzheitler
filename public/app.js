@@ -22,7 +22,7 @@ if (backgroundOnly) {
   const loginForm = document.querySelector('#login-form');
   if (loginForm) loginForm.action = `/api/login?return=${backgroundClean ? 'background-clean' : 'background'}`;
 }
-import {lipPoses, settingsOf, visualsOf} from './profiles.mjs';
+import {lipPoses, settingsOf, visualsOf, moods} from './profiles.mjs';
 import {attachFilaments} from './filaments.mjs';
 import {attachReferenceMask} from './reference-mask.mjs';
 import {attachUserMask} from './user-mask.mjs';
@@ -88,8 +88,8 @@ let switching = false;
 const profileSnapshot = () => ({mood:currentMood, lips:structuredClone(lipValues), ...(faceVisuals ? {visuals:{...faceVisuals}} : {})});
 const syncVisualInputs = () => {
   if (!faceVisuals) return;
-  for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion']) {
-    const isMotion=['headMotion','eyeMotion'].includes(key);
+  for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion','emotionStrength']) {
+    const isMotion=['headMotion','eyeMotion','emotionStrength'].includes(key);
     const enabled=isMotion?activeProfile?.id==='user-mask':key!=='activityStrength'||Boolean(activeProfile?.appearance?.activity);
     document.querySelector('#face-motion-controls').hidden=activeProfile?.id!=='user-mask';
     document.querySelector(`#face-${key}`).closest('label').hidden=!enabled;
@@ -98,27 +98,27 @@ const syncVisualInputs = () => {
     document.querySelector(`#face-${key}-value`).textContent=`${Math.round(faceVisuals[key]*100)}%`;
   }
 };
-for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
+for (const key of ['opacity','brightness','speed','activityStrength','headMotion','eyeMotion','emotionStrength']) document.querySelector(`#face-${key}`).addEventListener('input', event => {
   if (!head?.filaments || switching) return;
   faceVisuals=head.filaments.tune({[key]:Number(event.target.value)/100});
-  if(['headMotion','eyeMotion'].includes(key))saveMotionSoon();
+  if(['headMotion','eyeMotion','emotionStrength'].includes(key))saveMotionSoon();
   syncVisualInputs(); if (!playing) facePhase('preview'); else publishScene();
 });
 
 const readMotion = id => {
-  try {const value=JSON.parse(localStorage.getItem(`avatar.motion.v1.${id}`));if(value&&['headMotion','eyeMotion'].every(k=>typeof value[k]==='number'&&Number.isFinite(value[k])&&value[k]>=0&&value[k]<=3))return value;}catch{}return {};
+  try {const value=JSON.parse(localStorage.getItem(`avatar.motion.v1.${id}`));if(value&&['headMotion','eyeMotion','emotionStrength'].every(k=>typeof value[k]==='number'&&Number.isFinite(value[k])&&value[k]>=0&&value[k]<=3))return {...value,emotionStrength:typeof value.emotionStrength==='number'&&value.emotionStrength>=0&&value.emotionStrength<=2?value.emotionStrength:1};}catch{}return {};
 };
 let motionSaveTimer,motionSaveChain=Promise.resolve();
 function saveMotionSoon(){
-  const profile=activeProfile,id=profile.id,motion={headMotion:faceVisuals.headMotion,eyeMotion:faceVisuals.eyeMotion};
+  const selectedMood=currentMood,profile=activeProfile,id=profile.id,motion={headMotion:faceVisuals.headMotion,eyeMotion:faceVisuals.eyeMotion,emotionStrength:faceVisuals.emotionStrength};
   try{localStorage.setItem(`avatar.motion.v1.${id}`,JSON.stringify(motion));}catch{}
-  const status=document.querySelector('#face-motion-save');status.textContent='Сохраняю движение…';
+  const status=document.querySelector('#face-motion-save');status.textContent='Сохраняю параметры…';
   clearTimeout(motionSaveTimer);motionSaveTimer=setTimeout(()=>{
     const prior=profileSettings[id]||profile.defaults;
-    const settings=settingsOf({...prior,visuals:{...visualsOf({...profile.appearance,...prior.visuals}),...motion}});
+    const settings=settingsOf({...prior,mood:selectedMood,visuals:{...visualsOf({...profile.appearance,...prior.visuals}),...motion}});
     motionSaveChain=motionSaveChain.catch(()=>{}).then(async()=>{
-      try{const response=await fetch('/api/profile-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,settings})});if(!response.ok)throw new Error();profileSettings[id]=(await response.json()).settings;if(activeProfile?.id===id)status.textContent='Движение сохранено для этой маски.';}
-      catch{if(activeProfile?.id===id)status.textContent='Движение сохранено в этом браузере; сервер сейчас недоступен.';}
+      try{const response=await fetch('/api/profile-settings',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,settings})});if(!response.ok)throw new Error();profileSettings[id]=(await response.json()).settings;if(activeProfile?.id===id)status.textContent='Параметры сохранены для этой маски.';}
+      catch{if(activeProfile?.id===id)status.textContent='Параметры сохранены в этом браузере; сервер сейчас недоступен.';}
     });
   },350);
 }
@@ -156,7 +156,7 @@ const switchProfile = async (id) => {
     });
     await candidate.showAvatar({url: profile.url, body: profile.body, avatarMood: settings.mood, lipsyncLang: 'en'});
     candidate.setView(profile.cameraView);
-    if (profile.appearance?.style === 'user-mask') candidate.filaments = attachUserMask(candidate, {...profile.appearance, ...settings.visuals});
+    if (profile.appearance?.style === 'user-mask') candidate.filaments = attachUserMask(candidate, {...profile.appearance, ...settings.visuals, motionSeed:sceneKey,mood:settings.mood});
     else if (profile.appearance?.style === 'reference-mask') candidate.filaments = attachReferenceMask(candidate, {...profile.appearance, ...settings.visuals});
     else if (profile.appearance) candidate.filaments = attachFilaments(candidate, {...profile.appearance, ...settings.visuals});
     // Commit only after loading succeeds; a failed candidate leaves the old doll usable.
@@ -252,7 +252,6 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
   if (!message || typeof message !== 'object') return;
   if (!compositeClean) { if (message.kind === 'ready') publishScene(); return; }
   if (!head || switching) return;
-  if(message.kind==='motion'&&!sceneApplying){head.filaments?.followMotion?.(message.values);return;}
   if (message.kind === 'pose' && !sceneApplying) {
     for (const key of lipKeys) {
       const value=message.values?.[key];
@@ -274,7 +273,7 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
     const profile=profiles.find(p=>p.id===message.profileId);
     if(!profile) return;
     if(activeProfile?.id!==profile.id) await switchProfile(profile.id);
-    currentMood=next.mood; head.setMood(currentMood);
+    currentMood=next.mood; applyMood(head,currentMood);
     for(const key of Object.keys(lipValues)) delete lipValues[key];
     Object.assign(lipValues,next.lips);
     if(head.filaments) {faceVisuals=head.filaments.tune(next.visuals || profile.appearance);syncVisualInputs();}
@@ -286,7 +285,6 @@ if (sceneChannel) sceneChannel.onmessage = async event => {
   } catch { setState('Не удалось применить параметры общего вида.',true); }
   finally { sceneApplying=false; }
 };
-if(!compositeClean)setInterval(()=>{if(activeProfile?.id==='user-mask'&&head?.filaments?.motion)sceneChannel?.postMessage({kind:'motion',values:head.filaments.motion});},60);
 let wasSharingPose=false;
 if (!compositeClean) setInterval(()=>{
   if(head && (head.isSpeaking || head.isAudioPlaying) && activeProfile?.appearance) {
@@ -353,13 +351,25 @@ document.querySelector('#save-voice').addEventListener('click', () => {
   saveVoice({voiceId: voiceInput.value.trim()});
 });
 
+// Bounded entry point for a future dialogue controller; no generation here.
+export async function setDialogueMood({mood,intensity=1}={}){
+  if(!moods.includes(mood))throw new Error('Неизвестная эмоция');
+  if(typeof intensity!=='number'||!Number.isFinite(intensity)||intensity<0||intensity>2)throw new Error('Сила эмоции должна быть от 0 до 2');
+  const doll=await ensureHead();if(activeProfile?.id!=='user-mask')throw new Error('Выберите вашу маску');
+  currentMood=mood;faceVisuals=doll.filaments.tune({emotionStrength:intensity});applyMood(doll,mood);
+  markPressed('[data-mood]',mood,'mood');syncVisualInputs();saveMotionSoon();
+  if(!playing)facePhase('preview');else publishScene();return {mood,intensity};
+}
+function applyMood(doll,mood){if(doll.filaments?.setEmotion){if(doll.moodName!=='neutral')doll.setMood('neutral');doll.filaments.setEmotion(mood);}else doll.setMood(mood);}
 for (const button of document.querySelectorAll('[data-mood]')) {
   button.addEventListener('click', async () => {
     if (switching || !head) return;
     const doll = await ensureHead();
-    doll.setMood(button.dataset.mood);
+    if(activeProfile?.id==='user-mask'){await setDialogueMood({mood:button.dataset.mood,intensity:faceVisuals.emotionStrength});if(!playing)setState(button.textContent);return;}
+    applyMood(doll,button.dataset.mood);
     if (!playing) facePhase('preview');
     currentMood = button.dataset.mood;
+    if(activeProfile?.id==='user-mask')saveMotionSoon();
     publishScene();
     markPressed('[data-mood]', button.dataset.mood, 'mood');
     if (!playing) setState(button.textContent);

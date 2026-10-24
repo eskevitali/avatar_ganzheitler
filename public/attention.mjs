@@ -7,21 +7,30 @@ export function attentionOf(raw={}) {
   }
   if(out.intervalMaxMs<out.intervalMinMs)throw new Error('Неверный интервал внимания');return out;
 }
-export function createAttentionMotion(raw,random=Math.random){
-  const c=attentionOf(raw),rad=Math.PI/180;let at=0,next=0,nextEye=0,wasSpeaking=false,centerUntil=0;
-  let headIntensity=1,eyeIntensity=1;
-  const a={yaw:0,pitch:0,eyeYaw:0,eyePitch:0},vel={...a};let yawTarget=0,pitchTarget=0,eyeX=0,eyeY=0;
-  const sample=(lo,hi)=>lo+(hi-lo)*random();
-  const damp=(key,target,dt,w)=>{vel[key]+=((target-a[key])*w*w-2*w*vel[key])*dt;a[key]+=vel[key]*dt;};
-  return {setIntensity(head,eyes){headIntensity=Math.max(0,Math.min(3,head));eyeIntensity=Math.max(0,Math.min(3,eyes));},step(dt,speaking){
-    dt=Math.min(.05,Math.max(0,dt));at+=dt*1000;
-    if(wasSpeaking&&!speaking){centerUntil=at+1800;next=centerUntil;yawTarget=pitchTarget=0;}
-    wasSpeaking=speaking;
-    if(at>=next&&at>=centerUntil){yawTarget=(random()<.5?-1:1)*sample(.4,1);pitchTarget=sample(-1,1);next=at+sample(c.intervalMinMs,c.intervalMaxMs);}
-    if(at>=nextEye){eyeX=(random()<.5?-1:1)*sample(.35,.65);eyeY=sample(-.25,.25);nextEye=at+sample(2600,5500);}
-    damp('yaw',yawTarget*c.headYawDegrees*rad*headIntensity,dt,2);damp('pitch',pitchTarget*c.headPitchDegrees*rad*headIntensity,dt,2);
-    const limit=Math.min(6,c.eyeDegrees*eyeIntensity)*rad,clamp=v=>Math.min(limit,Math.max(-limit,v));
-    damp('eyeYaw',clamp((-a.yaw*c.compensation+eyeX*c.eyeDegrees*rad)*eyeIntensity),dt,3.8);damp('eyePitch',clamp((-a.pitch*c.compensation+eyeY*c.eyeDegrees*rad)*eyeIntensity),dt,3.8);
-    return {...a};
-  }};
+// Random-access cubic B-spline noise is C2 across every knot. A shared seed
+// and wall clock let the clean view move independently of background-tab RAF.
+function hash(n){n=Math.imul(n^(n>>>16),0x45d9f3b);n=Math.imul(n^(n>>>16),0x45d9f3b);return(n^(n>>>16))>>>0;}
+function seedOf(value){let n=2166136261;for(const ch of String(value))n=Math.imul(n^ch.charCodeAt(0),16777619);return n>>>0;}
+function noiseBand(span,seed){return time=>{
+ const x=time/span,i=Math.floor(x),t=x-i,t2=t*t,t3=t2*t,q=[];
+ for(let j=0;j<4;j++)q.push(hash((i+j)^seed)/2147483647.5-1);
+ return ((1-3*t+3*t2-t3)*q[0]+(4-6*t2+3*t3)*q[1]+(1+3*t+3*t2-3*t3)*q[2]+t3*q[3])/6;
+};}
+export function createAttentionMotion(raw,random=Math.random,options={}){
+ const c=attentionOf(raw),rad=Math.PI/180,span=(c.intervalMinMs+c.intervalMaxMs)/2000;
+ const seed=options.seed===undefined?Math.floor(random()*4294967296):seedOf(options.seed);
+ const band=(speed,salt)=>noiseBand(span*speed,seed^salt);
+ const yawSlow=band(1,8191),yawFast=band(.53,127),pitchSlow=band(1.17,32749),pitchFast=band(.61,65521),eyeX=band(.72,524287),eyeY=band(.91,131071);
+ let time=0,headIntensity=1,eyeIntensity=1;const gains={head:[0,0,0],eyes:[0,0,0]};
+ const advanceGain=(values,target,dt)=>{const k=1-Math.exp(-dt*7);for(let i=0;i<3;i++){values[i]+=(target-values[i])*k;target=values[i];}return values[2];};
+ return {setIntensity(head,eyes){headIntensity=Math.max(0,Math.min(3,head));eyeIntensity=Math.max(0,Math.min(3,eyes));},step(dt,_speaking){
+   dt=Math.max(0,Math.min(10,dt));time+=dt;
+   let remaining=dt;
+   while(remaining>1e-9){const h=Math.min(1/120,remaining);remaining-=h;advanceGain(gains.head,headIntensity,h);advanceGain(gains.eyes,eyeIntensity,h);}
+   const t=options.clock?options.clock():time,h=gains.head[2],e=gains.eyes[2];
+   const yaw=(.75*yawSlow(t)+.25*yawFast(t))*c.headYawDegrees*rad*h;
+   const pitch=(.75*pitchSlow(t)+.25*pitchFast(t))*c.headPitchDegrees*rad*h;
+   const limit=Math.min(6,c.eyeDegrees*e)*rad,clamp=v=>Math.min(limit,Math.max(-limit,v));
+   return {yaw,pitch,eyeYaw:clamp((-yaw*c.compensation+eyeX(t)*.65*c.eyeDegrees*rad)*e),eyePitch:clamp((-pitch*c.compensation+eyeY(t)*.25*c.eyeDegrees*rad)*e)};
+ }};
 }

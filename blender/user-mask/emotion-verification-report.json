@@ -1,0 +1,104 @@
+{
+  "browser_samples": 256,
+  "speaking_samples": 101,
+  "idle_samples": 155,
+  "mood_speech": {
+    "activity": "speech",
+    "audio": "0.073",
+    "mood": "happy",
+    "mouth": "0",
+    "phase": "speaking",
+    "pitch": "-0.0012",
+    "requests": "1",
+    "weights": {
+      "browDownLeft": 5.045144801388472e-261,
+      "browDownRight": 5.045144801388472e-261,
+      "browInnerUp": 0,
+      "browOuterUpLeft": 0.15,
+      "browOuterUpRight": 0.15,
+      "cheekSquintLeft": 0.003688354464606154,
+      "cheekSquintRight": 0.003688354464606154,
+      "eyeSquintLeft": 2.602556972417051e-263,
+      "eyeSquintRight": 2.602556972417051e-263,
+      "eyeWideLeft": 0,
+      "eyeWideRight": 0,
+      "mouthDimpleLeft": 0.08000000000000002,
+      "mouthDimpleRight": 0.08000000000000002,
+      "mouthFrownLeft": 8.693172580853508e-262,
+      "mouthFrownRight": 8.693172580853508e-262,
+      "mouthPressLeft": 1.3971170219226408e-261,
+      "mouthPressRight": 1.3971170219226408e-261,
+      "mouthSmileLeft": 0.288,
+      "mouthSmileRight": 0.288,
+      "mouthStretchLeft": 0,
+      "mouthStretchRight": 0
+    },
+    "yaw": "-0.0005"
+  },
+  "zero_strength_checks": [
+    {
+      "maxWeight": 0,
+      "selected": "neutral",
+      "strength": "0"
+    },
+    {
+      "maxWeight": 0,
+      "selected": "happy",
+      "strength": "0"
+    },
+    {
+      "maxWeight": 0,
+      "selected": "sad",
+      "strength": "0"
+    },
+    {
+      "maxWeight": 0,
+      "selected": "fear",
+      "strength": "0"
+    },
+    {
+      "maxWeight": 0,
+      "selected": "angry",
+      "strength": "0"
+    }
+  ],
+  "neutral_geometry_uv_glb_changed": false,
+  "emotions_implementation": "weights only, no model or texture edits",
+  "old_happy_smile_weight": 0.16,
+  "new_happy_smile_weight": 0.72,
+  "speech_mouth_expression_factor": 0.4,
+  "blink_aperture_expression_factor": "(1-blink)^2",
+  "presets_checked": {
+    "happy": [
+      0,
+      1,
+      2
+    ],
+    "sad": [
+      0,
+      1,
+      2
+    ],
+    "fear": [
+      0,
+      1,
+      2
+    ],
+    "angry": [
+      0,
+      1
+    ],
+    "neutral": [
+      0,
+      2
+    ]
+  },
+  "yaw_speaking_range_degrees": [
+    -2.6527774027218576,
+    2.208557494578979
+  ],
+  "pitch_speaking_range_degrees": [
+    -0.5691648145270571,
+    0.29156676278617333
+  ]
+}

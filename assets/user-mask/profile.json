@@ -96,7 +96,8 @@
       "speed": 0.7,
       "activityStrength": 0.5,
       "headMotion": 1,
-      "eyeMotion": 1
+      "eyeMotion": 1,
+      "emotionStrength": 1
     }
   }
 }

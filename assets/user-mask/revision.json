@@ -28,5 +28,29 @@
     "auto_save": "per-profile server settings with local fallback",
     "clean_view": "paired actual motion stream",
     "model_unchanged": true
+  },
+  "continuous_motion": {
+    "version": "continuous-2026-10-24",
+    "curve": "C2 cubic B-spline noise, shared wall clock and seed",
+    "speech_reset": false,
+    "held_targets": false,
+    "background_source_dependency": false
+  },
+  "emotions": {
+    "range": [
+      0,
+      2
+    ],
+    "default": 1,
+    "method": "bounded local weights only, no GLB/UV/image edits",
+    "moods": [
+      "neutral",
+      "happy",
+      "sad",
+      "fear",
+      "angry"
+    ],
+    "live_frontend_api": "setDialogueMood({mood,intensity})",
+    "this_update_tts_requests": 1
   }
 }
