@@ -1,3 +1,4 @@
+import {attentionOf} from './attention.mjs';
 import {lipKeys} from './mouth.mjs';
 export const moods = ['neutral', 'happy', 'sad', 'angry', 'fear'];
 export const lipPoses = {
@@ -50,6 +51,7 @@ export function appearanceOf(raw) {
     if (!Number.isFinite(raw.transitionMs) || raw.transitionMs<800 || raw.transitionMs>6000) throw new Error('appearance.transitionMs: вне диапазона');
     result.transitionMs=raw.transitionMs;
   }
+  if (raw.attention !== undefined) result.attention=attentionOf(raw.attention);
   if (raw.activity !== undefined) {
     if (!raw.activity || raw.activity.type!=='neural-glow' || typeof raw.activity.strength!=='number' || !Number.isFinite(raw.activity.strength) || raw.activity.strength<0 || raw.activity.strength>1) throw new Error('Неизвестный или неверный effect activity');
     result.activity={type:'neural-glow', strength:raw.activity.strength};

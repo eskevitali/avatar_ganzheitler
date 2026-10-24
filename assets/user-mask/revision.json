@@ -1,21 +1,16 @@
 {
   "id": "user-mask",
-  "model": "user-mask-956f066a5724.glb",
-  "sha256": "956f066a57249629ee589a7eaac84f4173959bad8edbc333c7d94d3f423b7245",
-  "bytes": 3980820,
+  "model": "user-mask-49c38f1fa339.glb",
+  "sha256": "49c38f1fa33919499abea88ac4ba58ce39035dd0f0826daf6912a99359469d14",
+  "bytes": 3904344,
   "accepted_source": "source/user-accepted-2026-10-23.blend",
-  "appearance_status": "User accepted blink/UV correction, 2026-10-24",
+  "appearance_status": "Accepted blink/UV retained; requested subtle attention motion added 2026-10-24",
   "verification": {
-    "neutral_geometry": "byte-identical to accepted baseline",
-    "modified_morphs": [
-      "eyeBlinkLeft",
-      "eyeBlinkRight"
-    ],
-    "unchanged_morphs": 66,
-    "texture_pixels": "unchanged",
-    "uv": "local eye alignment corrected",
-    "tts_requests": 1,
-    "cached_repeat": "verified",
-    "transitions_ms": 2400
+    "accepted_neutral_geometry_uv_texture": "unchanged from956f066a5724",
+    "accepted_blink_targets": "unchanged",
+    "eyeLook_targets": "8 globe-only rotations, skin/lid/bridge untouched",
+    "tts_total_new_requests": 1,
+    "attention_voice_test": "restored cached clip, zero new TTS requests",
+    "transition_ms": 2400
   }
 }

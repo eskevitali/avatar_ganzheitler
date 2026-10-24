@@ -1,9 +1,10 @@
 """Check new GLB against accepted adaptation, excluding the intended eye changes."""
-import json,struct,pathlib,hashlib
+import json,struct,pathlib,hashlib,sys
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def read(path):
  data=path.read_bytes();n=struct.unpack_from('<I',data,12)[0];g=json.loads(data[20:20+n]);binary=data[28+n:];return g,binary
-old,ob=read(ROOT/'assets/user-mask/user-mask-49ca2e8a2ac4.glb');new,nb=read(ROOT/'assets/user-mask/user-mask.glb')
+attention='--attention'in sys.argv
+old,ob=read(ROOT/('assets/user-mask/user-mask-956f066a5724.glb'if attention else 'assets/user-mask/user-mask-49ca2e8a2ac4.glb'));new,nb=read(ROOT/'assets/user-mask/user-mask.glb')
 def acc(g,b,i):
  a=g['accessors'][i];size={5126:4,5125:4,5123:2,5121:1}[a['componentType']]*{'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4}[a['type']]
  out=bytearray(size*a['count'])
@@ -22,8 +23,11 @@ changed=[]
 for i,name in enumerate(names):
  same=acc(old,ob,p['targets'][i]['POSITION'])==acc(new,nb,q['targets'][i]['POSITION'])
  if not same:changed.append(name)
-assert set(changed)=={'eyeBlinkLeft','eyeBlinkRight'},changed
+expected={'eyeLook'+direction+side for direction in ['In','Out','Up','Down'] for side in ['Left','Right']}
+if not attention:expected|={'eyeBlinkLeft','eyeBlinkRight'}
+assert set(changed)==expected,changed
+if attention:assert acc(old,ob,p['attributes']['TEXCOORD_0'])==acc(new,nb,q['attributes']['TEXCOORD_0']),'accepted eye UV changed'
 images=lambda g,b:[hashlib.sha256(b[g['bufferViews'][i['bufferView']].get('byteOffset',0):g['bufferViews'][i['bufferView']].get('byteOffset',0)+g['bufferViews'][i['bufferView']]['byteLength']]).hexdigest()for i in g['images']]
 assert images(old,ob)==images(new,nb),'image changed'
 report={'neutral_positions_exactly_equal':True,'neutral_normals_exactly_equal':True,'triangles_exactly_equal':True,'embedded_texture_bytes_exactly_equal':True,'changed_morphs':changed,'unchanged_morphs':len(names)-len(changed),'morph_count':len(names)}
-(ROOT/'blender/user-mask/glb-regression-report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))
+(ROOT/('blender/user-mask/glb-attention-regression-report.json'if attention else 'blender/user-mask/glb-regression-report.json')).write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report))

@@ -1,3 +1,4 @@
+import {createAttentionMotion} from './attention.mjs';
 import * as THREE from 'three';
 import {visualsOf} from './profiles.mjs';
 import {advanceActivity} from './activity.mjs';
@@ -5,6 +6,7 @@ import {advanceActivity} from './activity.mjs';
 // User-authored neutral geometry and its exact baked UV projection stay intact.
 // Only renderer-owned bounded light/motion effects are added to the live mesh.
 export function attachUserMask(doll, appearance) {
+  const attention=createAttentionMotion(appearance.attention);
   const transitionMs=appearance.transitionMs ?? 2400;
   let revealFrom=1,revealStarted=performance.now();
   let visual=visualsOf(appearance),target=1,reveal=1,activity=.08,audioLevel=0,remote=null,disposed=false;
@@ -90,20 +92,22 @@ export function attachUserMask(doll, appearance) {
   doll.nodeAvatar.classList.add('user-mask');doll.scene.background=null;doll.renderer.setClearColor(0,0);
   doll.controls.target.set(0,1.67,0);doll.camera.position.set(0,1.67,2.05);doll.controls.update();doll.cameraClock=null;
   const data=new Uint8Array(doll.audioAnalyzerNode?.fftSize || 256);
-  let previous=performance.now(),started=previous,raf,nextTurn=0,yaw=0,pitch=0,yawV=0,pitchV=0,desiredYaw=0,desiredPitch=0,measured=previous,frame=doll.renderer.info.render.frame;
+  let previous=performance.now(),started=previous,raf,measured=previous,frame=doll.renderer.info.render.frame;
   const tick=now=>{
     if(disposed)return;const dt=Math.min(.05,(now-previous)/1000);previous=now;
     let speaking=Boolean(doll.isSpeaking || doll.isAudioPlaying);audioLevel=0;
     if(remote && now-remote.at<400){speaking=remote.speaking;audioLevel=remote.rms;}
     else if(speaking && doll.audioAnalyzerNode){doll.audioAnalyzerNode.getByteTimeDomainData(data);let e=0;for(const n of data)e+=((n-128)/128)**2;audioLevel=Math.sqrt(e/data.length);}
-    if(speaking && now>=nextTurn){desiredYaw=(random()-.5)*.17;desiredPitch=(random()-.5)*.08;nextTurn=now+1500+random()*2600;}
-    if(!speaking){desiredYaw=0;desiredPitch=0;nextTurn=0;}
-    const w=3.1;yawV+=((desiredYaw-yaw)*w*w-2*w*yawV)*dt;pitchV+=((desiredPitch-pitch)*w*w-2*w*pitchV)*dt;yaw+=yawV*dt;pitch+=pitchV*dt;pivot.rotation.set(pitch,yaw,0);
+    const motion=attention.step(dt,speaking);pivot.rotation.set(motion.pitch,motion.yaw,0);
+    // Own the existing eye-look channels; engine random eye/bone tracks cannot add
+    // a second movement. Targets affect globe vertices only, never lids or bridge.
+    doll.setFixedValue('eyesRotateY',motion.eyeYaw/(12*Math.PI/180));
+    doll.setFixedValue('eyesRotateX',motion.eyePitch/(12*Math.PI/180));
     activity=advanceActivity(activity,audioLevel,speaking,dt);
     const phase=Math.min(1,Math.max(0,(now-revealStarted)/transitionMs)),ease=phase*phase*(3-2*phase);reveal=revealFrom+(target-revealFrom)*ease;
     uniforms.uReveal.value=reveal;uniforms.uTime.value=(now-started)/1000;uniforms.uActivity.value=activity;
     const stage=document.querySelector('#composite-stage');
-    if(stage){stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=yaw.toFixed(4);stage.dataset.headPitch=pitch.toFixed(4);stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
+    if(stage){stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=motion.yaw.toFixed(4);stage.dataset.headPitch=motion.pitch.toFixed(4);stage.dataset.eyeMorph=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].map(k=>doll.mtAvatar?.[k]?.value||0)));stage.dataset.eyeYaw=motion.eyeYaw.toFixed(5);stage.dataset.eyePitch=motion.eyePitch.toFixed(5);stage.dataset.gazeTarget='virtual-screen-listener';stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
     if(now-measured>2000){const fps=Math.round((doll.renderer.info.render.frame-frame)*1000/(now-measured));const output=document.querySelector('#face-performance');if(output){output.textContent=`Ваша маска: ${fps} fps · ${doll.renderer.info.render.triangles.toLocaleString('ru')} треугольников`;output.dataset.fps=String(fps);}measured=now;frame=doll.renderer.info.render.frame;}
     raf=requestAnimationFrame(tick);
   };raf=requestAnimationFrame(tick);

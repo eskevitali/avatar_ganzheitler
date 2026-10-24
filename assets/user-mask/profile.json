@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "id": "user-mask",
   "name": "Ваша маска · Blender",
-  "model": "user-mask-956f066a5724.glb",
+  "model": "user-mask-49c38f1fa339.glb",
   "body": "F",
   "cameraView": "head",
   "appearance": {
@@ -16,6 +16,14 @@
     "activity": {
       "type": "neural-glow",
       "strength": 0.5
+    },
+    "attention": {
+      "headYawDegrees": 2.8,
+      "headPitchDegrees": 1.1,
+      "eyeDegrees": 2.2,
+      "compensation": 0.65,
+      "intervalMinMs": 2600,
+      "intervalMaxMs": 6500
     }
   },
   "defaults": {

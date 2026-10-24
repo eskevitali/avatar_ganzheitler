@@ -1,6 +1,6 @@
 # Accepted user mask — 2026-10-24
 
-User accepted the local blink/UV correction on 2026-10-24. Profile: `user-mask`, model `user-mask-956f066a5724.glb`. Do not rebuild from reference002 or older procedural faces.
+User accepted the local blink/UV correction on 2026-10-24. Profile: `user-mask`, model `user-mask-49c38f1fa339.glb`. Do not rebuild from reference002 or older procedural faces.
 
 ## Authoritative sources
 
@@ -30,3 +30,11 @@ Node syntax checks and four existing suites (profiles, activity, clip cache, bac
 Existing .local-preview config; LAN http://192.168.1.107:3100/ and localhost http://localhost:3100/. Keep server running. Secrets and local speech cache are ignored. Package: releases/user-mask-2026-10-24.zip. Working branch feat/doll-profile-packages only; no main/production deployment.
 
 Reproduce Blender correction from adaptation committed at1e7d2f6, then run fix_blink_closure.py, read_edge_alpha.py, apply-user-mask-edge.py, check-user-mask-regression.py and package-user-mask.py. The correction script is for that baseline, not for reapplying to an already corrected adaptation.
+
+## Added subtle attention motion — 2026-10-24
+
+Direct follow-up request: small random head turns and almost imperceptible eye movement attending to the screen listener. Existing head pivot controller replaced, not stacked. Default bounds: yaw2.8°, pitch1.1° while speaking, half in idle; critically damped targets every2.6–6.5sec. After speech returns toward center for1.8sec. Eyes compensate65% of head turn with very small random adjustments every2.6–5.5sec, max2.2°. No webcam or actual person tracking.
+
+Eight existing eyeLook targets now rotate ONLY the72 vertices of each separate globe about its own center. No skin, lid, brow or bridge movement. Full target12°; runtime bounded to2.2°. Fixed eye channels prevent concurrent engine random gaze from adding a second movement. Accepted neutral coordinates/normals/triangles/UV/texture and accepted blink targets remain byte-identical (glb-attention-regression-report.json). Blink correction accepted at commitf1bb8f9; gaze additions affect only eyeLook targets.
+
+Parameters are bounded declarative appearance.attention fields, validated through profiles.mjs/attention.mjs. Unit test verifies amplitude, smoothness, sparse random sampling and compensating direction. Five suites pass. Browser shows changing headYaw/eyeYaw/actual eyeMorph, full blink peak1, no console errors. Speech/cache/paired scene verified with existing audio and no new generation after original one-request test. Latest package: releases/user-mask-2026-10-24-attention.zip.
