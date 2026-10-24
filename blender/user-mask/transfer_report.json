@@ -1,0 +1,352 @@
+{
+  "source_head_vertices": 4202,
+  "exact_head_correspondences": 4202,
+  "source_meshes": 42,
+  "total_vertices_before": 5198,
+  "total_vertices_after_crop": 4405,
+  "faces_before": 4822,
+  "faces_after": 3986,
+  "joined_vertices": 4405,
+  "shape_keys": 68,
+  "retained_front_vertex_motion": 0,
+  "original_file_unchanged": true,
+  "mapping_methods": {
+    "helper-l-eye": "exact topology",
+    "helper-l-eyelashes-1": "helper-local movement transfer",
+    "helper-l-eyelashes-1.001": "helper-local movement transfer",
+    "helper-l-eyelashes-1.002": "helper-local movement transfer",
+    "helper-l-eyelashes-1.003": "helper-local movement transfer",
+    "helper-l-eyelashes-1.004": "helper-local movement transfer",
+    "helper-l-eyelashes-1.005": "helper-local movement transfer",
+    "helper-l-eyelashes-1.006": "helper-local movement transfer",
+    "helper-l-eyelashes-1.007": "helper-local movement transfer",
+    "helper-l-eyelashes-1.008": "helper-local movement transfer",
+    "helper-l-eyelashes-2": "helper-local movement transfer",
+    "helper-l-eyelashes-2.001": "helper-local movement transfer",
+    "helper-l-eyelashes-2.002": "helper-local movement transfer",
+    "helper-l-eyelashes-2.003": "helper-local movement transfer",
+    "helper-l-eyelashes-2.004": "helper-local movement transfer",
+    "helper-l-eyelashes-2.005": "helper-local movement transfer",
+    "helper-l-eyelashes-2.006": "helper-local movement transfer",
+    "helper-l-eyelashes-2.007": "helper-local movement transfer",
+    "helper-l-eyelashes-2.008": "helper-local movement transfer",
+    "helper-lower-teeth": "exact topology",
+    "helper-r-eye": "exact topology",
+    "helper-r-eyelashes-1": "helper-local movement transfer",
+    "helper-r-eyelashes-1.001": "helper-local movement transfer",
+    "helper-r-eyelashes-1.002": "helper-local movement transfer",
+    "helper-r-eyelashes-1.003": "helper-local movement transfer",
+    "helper-r-eyelashes-1.004": "helper-local movement transfer",
+    "helper-r-eyelashes-1.005": "helper-local movement transfer",
+    "helper-r-eyelashes-1.006": "helper-local movement transfer",
+    "helper-r-eyelashes-1.007": "helper-local movement transfer",
+    "helper-r-eyelashes-1.008": "helper-local movement transfer",
+    "helper-r-eyelashes-2": "helper-local movement transfer",
+    "helper-r-eyelashes-2.001": "helper-local movement transfer",
+    "helper-r-eyelashes-2.002": "helper-local movement transfer",
+    "helper-r-eyelashes-2.003": "helper-local movement transfer",
+    "helper-r-eyelashes-2.004": "helper-local movement transfer",
+    "helper-r-eyelashes-2.005": "helper-local movement transfer",
+    "helper-r-eyelashes-2.006": "helper-local movement transfer",
+    "helper-r-eyelashes-2.007": "helper-local movement transfer",
+    "helper-r-eyelashes-2.008": "helper-local movement transfer",
+    "helper-tongue": "exact topology",
+    "helper-upper-teeth": "exact topology"
+  },
+  "objects": [
+    {
+      "object": "MakeHuman head",
+      "vertices_before": 4202,
+      "vertices_after": 3409,
+      "faces_before": 4178,
+      "faces_after": 3342
+    },
+    {
+      "object": "helper-l-eye",
+      "vertices_before": 72,
+      "vertices_after": 72,
+      "faces_before": 70,
+      "faces_after": 70
+    },
+    {
+      "object": "helper-l-eyelashes-1",
+      "vertices_before": 24,
+      "vertices_after": 24,
+      "faces_before": 11,
+      "faces_after": 11
+    },
+    {
+      "object": "helper-l-eyelashes-1.001",
+      "vertices_before": 48,
+      "vertices_after": 48,
+      "faces_before": 22,
+      "faces_after": 22
+    },
+    {
+      "object": "helper-l-eyelashes-1.002",
+      "vertices_before": 6,
+      "vertices_after": 6,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-1.003",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-l-eyelashes-1.004",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-l-eyelashes-1.005",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-1.006",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-1.007",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-1.008",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-l-eyelashes-2",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-2.001",
+      "vertices_before": 12,
+      "vertices_after": 12,
+      "faces_before": 3,
+      "faces_after": 3
+    },
+    {
+      "object": "helper-l-eyelashes-2.002",
+      "vertices_before": 13,
+      "vertices_after": 13,
+      "faces_before": 4,
+      "faces_after": 4
+    },
+    {
+      "object": "helper-l-eyelashes-2.003",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-l-eyelashes-2.004",
+      "vertices_before": 6,
+      "vertices_after": 6,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-2.005",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-l-eyelashes-2.006",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-l-eyelashes-2.007",
+      "vertices_before": 50,
+      "vertices_after": 50,
+      "faces_before": 21,
+      "faces_after": 21
+    },
+    {
+      "object": "helper-l-eyelashes-2.008",
+      "vertices_before": 26,
+      "vertices_after": 26,
+      "faces_before": 12,
+      "faces_after": 12
+    },
+    {
+      "object": "helper-lower-teeth",
+      "vertices_before": 68,
+      "vertices_after": 68,
+      "faces_before": 48,
+      "faces_after": 48
+    },
+    {
+      "object": "helper-r-eye",
+      "vertices_before": 72,
+      "vertices_after": 72,
+      "faces_before": 70,
+      "faces_after": 70
+    },
+    {
+      "object": "helper-r-eyelashes-1",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-r-eyelashes-1.001",
+      "vertices_before": 24,
+      "vertices_after": 24,
+      "faces_before": 11,
+      "faces_after": 11
+    },
+    {
+      "object": "helper-r-eyelashes-1.002",
+      "vertices_before": 48,
+      "vertices_after": 48,
+      "faces_before": 22,
+      "faces_after": 22
+    },
+    {
+      "object": "helper-r-eyelashes-1.003",
+      "vertices_before": 6,
+      "vertices_after": 6,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-1.004",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-r-eyelashes-1.005",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-r-eyelashes-1.006",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-1.007",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-1.008",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-2",
+      "vertices_before": 12,
+      "vertices_after": 12,
+      "faces_before": 3,
+      "faces_after": 3
+    },
+    {
+      "object": "helper-r-eyelashes-2.001",
+      "vertices_before": 13,
+      "vertices_after": 13,
+      "faces_before": 4,
+      "faces_after": 4
+    },
+    {
+      "object": "helper-r-eyelashes-2.002",
+      "vertices_before": 6,
+      "vertices_after": 6,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-2.003",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-r-eyelashes-2.004",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-r-eyelashes-2.005",
+      "vertices_before": 50,
+      "vertices_after": 50,
+      "faces_before": 21,
+      "faces_after": 21
+    },
+    {
+      "object": "helper-r-eyelashes-2.006",
+      "vertices_before": 4,
+      "vertices_after": 4,
+      "faces_before": 1,
+      "faces_after": 1
+    },
+    {
+      "object": "helper-r-eyelashes-2.007",
+      "vertices_before": 26,
+      "vertices_after": 26,
+      "faces_before": 12,
+      "faces_after": 12
+    },
+    {
+      "object": "helper-r-eyelashes-2.008",
+      "vertices_before": 8,
+      "vertices_after": 8,
+      "faces_before": 2,
+      "faces_after": 2
+    },
+    {
+      "object": "helper-tongue",
+      "vertices_before": 226,
+      "vertices_after": 226,
+      "faces_before": 224,
+      "faces_after": 224
+    },
+    {
+      "object": "helper-upper-teeth",
+      "vertices_before": 68,
+      "vertices_after": 68,
+      "faces_before": 48,
+      "faces_after": 48
+    }
+  ]
+}

@@ -25,6 +25,7 @@ if (backgroundOnly) {
 import {lipPoses, settingsOf, visualsOf} from './profiles.mjs';
 import {attachFilaments} from './filaments.mjs';
 import {attachReferenceMask} from './reference-mask.mjs';
+import {attachUserMask} from './user-mask.mjs';
 import {readClipCache, writeClipCache, clearClipCache} from './clip-cache.mjs';
 
 const login = document.querySelector('#login');
@@ -133,12 +134,15 @@ const switchProfile = async (id) => {
     });
     await candidate.showAvatar({url: profile.url, body: profile.body, avatarMood: settings.mood, lipsyncLang: 'en'});
     candidate.setView(profile.cameraView);
-    if (profile.appearance?.style === 'reference-mask') candidate.filaments = attachReferenceMask(candidate, {...profile.appearance, ...settings.visuals});
+    if (profile.appearance?.style === 'user-mask') candidate.filaments = attachUserMask(candidate, {...profile.appearance, ...settings.visuals});
+    else if (profile.appearance?.style === 'reference-mask') candidate.filaments = attachReferenceMask(candidate, {...profile.appearance, ...settings.visuals});
     else if (profile.appearance) candidate.filaments = attachFilaments(candidate, {...profile.appearance, ...settings.visuals});
     // Commit only after loading succeeds; a failed candidate leaves the old doll usable.
     if (activeProfile) profileSettings[activeProfile.id] = profileSnapshot();
     disposeHead(head);
     head = candidate;
+    node.dataset.modelUrl=profile.url;
+    compositeStage.dataset.loadedProfileId=profile.id;
     activeProfile = profile;
     document.querySelector('#clean-scene-link').href=`/?scene=1&view=clean&profile=${encodeURIComponent(id)}&channel=${sceneKey}`;
     try { localStorage.setItem('avatar.profile', id); } catch {}
@@ -493,7 +497,7 @@ const playClip = async (doll, clip, fromCache) => {
   const frames = speechMouth(clip.audio, clip.alignment, lipPoseNow());
   if (doll.filaments) {
     facePhase('forming');
-    await new Promise(resolve => setTimeout(resolve, 650));
+    await new Promise(resolve => setTimeout(resolve, doll.filaments?.formationLeadMs ?? 650));
     facePhase('speaking');
   }
   doll.speakAudio({
@@ -556,7 +560,7 @@ const speakPhrase = async (phrase) => {
     if (selectedLip && head) applyLipFixed(head, selectedLip);
     if (head?.filaments) {
       facePhase('settling');
-      phaseTimer=setTimeout(()=>{facePhase('dissolving');phaseTimer=setTimeout(()=>facePhase('waiting'),1500);},2500);
+      phaseTimer=setTimeout(()=>{facePhase('dissolving');phaseTimer=setTimeout(()=>facePhase('waiting'),head?.filaments?.transitionMs ?? 1500);},2500);
     }
     if (!state.classList.contains('error')) setState(selectedLip ? `Форма «${lipLetter(selectedLip)}»` : 'Покой');
   }

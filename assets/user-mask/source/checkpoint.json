@@ -1,0 +1,17 @@
+{
+  "accepted_geometry": "user correction, no artistic changes authorized",
+  "files": [
+    {
+      "source": "/home/violes/GPT_Project/avatar_ganzheitler/repo/blender/002/mask_002_working.blend",
+      "copy": "assets/user-mask/source/user-accepted-2026-10-23.blend",
+      "sha256": "2fd0cc7276ebbf95653a6508f33429136dbbbcf521d7c003f0f7696789faf47e",
+      "bytes": 340601
+    },
+    {
+      "source": "/home/violes/GPT_Project/avatar_ganzheitler/001.png",
+      "copy": "assets/user-mask/source/reference-001.png",
+      "sha256": "f66ed1b5bbfee7d227af55c5b45f9789a3fe47acef6f3b69e4e017e7f24d0509",
+      "bytes": 2515780
+    }
+  ]
+}

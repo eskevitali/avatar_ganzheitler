@@ -1,3 +1,9 @@
+# Current accepted model
+
+See [USER_MASK_CHECKPOINT.md](USER_MASK_CHECKPOINT.md). The user-authored `user-mask` supersedes the historical reference002 notes below.
+
+---
+
 > **Новая актуальная точка:** пользователь возобновил работу в Blender, затем при 96% лимита сохранена незавершённая Blender-сцена. Геометрия в Solid НЕ принята. См. [blender/002/README.md](blender/002/README.md). `blender/002/mask_002_working.blend` — рабочий исходник. Ниже — предыдущая браузерная точка 182463c, не финальная модель.
 
 # Пауза: маска 002, продолжить после установки Blender пользователем

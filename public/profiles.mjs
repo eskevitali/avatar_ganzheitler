@@ -39,12 +39,16 @@ export function appearanceOf(raw) {
   if (raw === undefined) return undefined;
   if (!raw || raw.type !== 'filaments') throw new Error('Неизвестный тип appearance');
   if (!/^#[0-9a-fA-F]{6}$/.test(raw.color)) throw new Error('appearance.color: нужен #RRGGBB');
-  if (raw.style !== undefined && !['lines', 'woven', 'reference-mask'].includes(raw.style)) throw new Error('Неизвестный стиль волокон');
+  if (raw.style !== undefined && !['lines', 'woven', 'reference-mask', 'user-mask'].includes(raw.style)) throw new Error('Неизвестный стиль волокон');
   const result = {type: 'filaments', style: raw.style || 'lines', color: raw.color};
   for (const [key, fallback, min, max] of [['opacity', .52, .05, 1], ['brightness', 1.6, .2, 3], ['speed', .7, 0, 2], ['amplitude', .00035, 0, .002]]) {
     const value = raw[key] ?? fallback;
     if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new Error(`appearance.${key}: вне диапазона`);
     result[key] = value;
+  }
+  if (raw.transitionMs !== undefined) {
+    if (!Number.isFinite(raw.transitionMs) || raw.transitionMs<800 || raw.transitionMs>6000) throw new Error('appearance.transitionMs: вне диапазона');
+    result.transitionMs=raw.transitionMs;
   }
   if (raw.activity !== undefined) {
     if (!raw.activity || raw.activity.type!=='neural-glow' || typeof raw.activity.strength!=='number' || !Number.isFinite(raw.activity.strength) || raw.activity.strength<0 || raw.activity.strength>1) throw new Error('Неизвестный или неверный effect activity');

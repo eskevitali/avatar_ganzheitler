@@ -1,0 +1,86 @@
+{
+  "formatVersion": 1,
+  "id": "user-mask",
+  "name": "Ваша маска · Blender",
+  "model": "user-mask-49ca2e8a2ac4.glb",
+  "body": "F",
+  "cameraView": "head",
+  "appearance": {
+    "type": "filaments",
+    "style": "user-mask",
+    "color": "#ffffff",
+    "opacity": 0.95,
+    "brightness": 1,
+    "speed": 0.7,
+    "amplitude": 0.00035,
+    "activity": {
+      "type": "neural-glow",
+      "strength": 0.5
+    }
+  },
+  "defaults": {
+    "mood": "neutral",
+    "lips": {
+      "PP": {
+        "viseme_PP": 0.9,
+        "viseme_aa": 0,
+        "viseme_O": 0,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "aa": {
+        "viseme_PP": 0,
+        "viseme_aa": 0.8,
+        "viseme_O": 0,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "O": {
+        "viseme_PP": 0,
+        "viseme_aa": 0,
+        "viseme_O": 0.85,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "I": {
+        "viseme_PP": 0,
+        "viseme_aa": 0,
+        "viseme_O": 0,
+        "viseme_I": 0.85,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      }
+    }
+  }
+}
