@@ -1,8 +1,8 @@
 {
   "id": "user-mask",
-  "model": "user-mask-0ed7cc61f802.glb",
-  "sha256": "0ed7cc61f8029db724e755be3aa7b69a46e11074c9bc7ff94bf48f3dac747666",
-  "bytes": 4418584,
+  "model": "user-mask-b358fbc4aeb1.glb",
+  "sha256": "b358fbc4aeb106e0f12283da12c7e3beeee5601bba62306b346cca26b97dff79",
+  "bytes": 3777776,
   "accepted_source": "source/user-accepted-2026-10-23.blend",
   "appearance_status": "Accepted blink/UV retained; requested subtle attention motion added 2026-10-24",
   "verification": {
@@ -54,13 +54,19 @@
     "this_update_tts_requests": 1
   },
   "mouth_fix": {
-    "working_blend": "blender/user-mask/mask_user_mouth_fix.blend",
-    "accepted_before_mouth": "approved-before-mouth",
-    "tongue_alpha": "face opacity *0.1",
-    "tongue_emission": "low, no projected face image",
-    "tongue_depth_write": false,
-    "outer_face_uv_normals_all_68_morphs": "unchanged",
-    "tongue_motion": "existing jaw/viseme targets only; no independent phonetic tongue track",
-    "this_stage_tts_requests": 1
+    "version": "empty aperture supersedes0a65f9d",
+    "working_blend": "blender/user-mask/mask_user_mouth_open.blend",
+    "visible_internal_geometry": "none",
+    "removed_tongue_cavity_and_proxy_faces": 480,
+    "removed_deep_posterior_faces": 175,
+    "outer_lip_and_remaining_face_coordinates_uv_normals_morph_deltas": "unchanged",
+    "retained_target_contract": 68,
+    "retained_empty_targets": [
+      "tongueOut",
+      "viseme_sil"
+    ],
+    "pixel_comparison_to_hall_mae_0_255": 0.10687830687830686,
+    "this_stage_tts_requests": 1,
+    "current_criterion": "empty transparent aperture, no tongue or interior backing"
   }
 }

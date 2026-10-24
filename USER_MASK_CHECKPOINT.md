@@ -84,3 +84,21 @@ Blender close-ups: mouth-final-neutral/A/O/I/M, jaw-half/jaw-full and A-quarter.
 Reproduction from accepted mask_user_adaptation.blend: fix_mouth_interior.py → finish_mouth_cavity.py → set_tongue_transparency.py on the working copy → export_mouth_work.py → restore-mouth-face-normals.py → apply-user-mask-edge.py with working GLB and edge-alpha-mouth.json → check-mouth-regression.py. Do not reapply geometry steps to an already corrected file. Existing older whole-buffer regression script targets the pre-mouth single-primitive export; use check-mouth-regression.py for this split export.
 
 Latest package: releases/user-mask-2026-10-24-mouth.zip. Six existing relevant suites and Node syntax checks passed. No production change; working branch only. Preview3100 uses existing configuration/password/voice unchanged. Exact FullHD limitation remains as noted earlier.
+
+## Current final criterion: empty transparent mouth — supersedes0a65f9d
+
+User rejected the dark tongue/cavity result and explicitly authorized an empty transparent aperture. The prior mistake was an opaque near-black cavity behind a low-alpha tongue, so opacity numbers did not represent visible transparency. Final solution removes visible intraoral geometry rather than changing its tint.
+
+Current model user-mask-b358fbc4aeb1.glb; separate working source blender/user-mask/mask_user_mouth_open.blend. Previous tongue/cavity copy mask_user_mouth_fix.blend and package0a65f9d remain available; previous profile/model in assets/user-mask/before-empty-mouth/.
+
+Removed480 tongue/cavity faces and175 deep posterior faces that projected the rear mask through the opening. Coarse tooth proxies were already excluded; none are present now. External AND inner lip-rim faces are retained. All stored neutral and68 shape-key coordinates in the working copy unchanged; deletion was face-only. Export has3889 visible vertices and6982 triangles, with only UserNeuralSurface material. No invisible depth-writing tongue/cavity layer. Renderer restored to the accepted9fab1fa face renderer; obsolete intraoral shader code removed.
+
+check-mouth-regression.py --open verifies remaining positions/UV, normals,68 morph delta arrays and embedded reference image unchanged, and permits triangle removal only from the recorded deep posterior faces. All68 target names retained for TalkingHead compatibility; tongueOut and viseme_sil are zero on the exported face, intentionally retained as empty targets. No tongue animation is claimed or needed.
+
+Actual Chrome tests in accepted hall: A/O/I/M,3/4, speech and repeat. Temporarily set head/eye intensities0 for stable transparency comparison, then restored user's300/195; emotion105 and neutral mood unchanged. Repeat stopped and text restored. One short provider request was needed after previous clip-cache expiry; repeats used the same clip.
+
+Pixel proof uses unedited screenshots with identical3413×1605 viewport. Central aperture ROI(1230,850)-(1320,885) differs from the hall-only reference by mean0.1069/255; smaller ROI(1250,860)-(1300,880) is exactly identical. The hall floor itself is dark at this screen position, so a dark-looking area in that location is actual background, not an occluder. Full hall reference saved beside before/after images, and numeric report in mouth-open-pixel-report.json. The before image is the rejected dark variant for visual comparison; transparency is proven against the hall-only reference.
+
+Final proof files: mouth-empty-after-A/O/I/M.jpg, mouth-empty-after-A-quarter.jpg, mouth-empty-after-speech.jpg and mouth-empty-background.jpg. Browser/source report and face-only export regression are saved. Six relevant suites pass; server3100 remains running with original voice/password/env. No production change.
+
+Reproduce by running open_mouth_aperture.py on mask_user_mouth_fix.blend, export_mouth_work.py --out assets/user-mask-mouth-open on the new .blend, restore-mouth-face-normals.py with that GLB path, apply-user-mask-edge.py with that GLB and edge-alpha-mouth-open.json, then check-mouth-regression.py --open. Do not rerun the cut on an already cut file. Latest package releases/user-mask-2026-10-24-empty-mouth.zip. Exact FullHD output limitation remains unchanged.

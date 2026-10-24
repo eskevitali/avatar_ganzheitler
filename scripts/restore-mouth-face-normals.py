@@ -1,6 +1,6 @@
 """Restore serialized normals of protected face after Blender joins intraoral shell."""
-import pathlib,struct,json
-R=pathlib.Path(__file__).resolve().parents[1];ns={'__file__':str(R/'scripts/check-user-mask-regression.py')};s=(R/'scripts/check-user-mask-regression.py').read_text();exec(s[:s.index("p=old['meshes']")],ns);read=ns['read'];acc=ns['acc'];old,ob=read(R/'assets/user-mask/user-mask-49c38f1fa339.glb');path=R/'assets/user-mask-mouth-work/user-mask.glb';new,nb=read(path);p=old['meshes'][0]['primitives'][0];q=new['meshes'][0]['primitives'][0]
+import pathlib,struct,json,sys
+R=pathlib.Path(__file__).resolve().parents[1];ns={'__file__':str(R/'scripts/check-user-mask-regression.py')};s=(R/'scripts/check-user-mask-regression.py').read_text();exec(s[:s.index("p=old['meshes']")],ns);read=ns['read'];acc=ns['acc'];old,ob=read(R/'assets/user-mask/user-mask-49c38f1fa339.glb');path=R/(sys.argv[1]if len(sys.argv)>1 else 'assets/user-mask-mouth-work/user-mask.glb');new,nb=read(path);p=old['meshes'][0]['primitives'][0];q=new['meshes'][0]['primitives'][0]
 def vectors(g,b,a,n):return list(struct.iter_unpack('<'+'f'*n,acc(g,b,a)))
 op=vectors(old,ob,p['attributes']['POSITION'],3);ou=vectors(old,ob,p['attributes']['TEXCOORD_0'],2);on=vectors(old,ob,p['attributes']['NORMAL'],3);np=vectors(new,nb,q['attributes']['POSITION'],3);nu=vectors(new,nb,q['attributes']['TEXCOORD_0'],2);nn=vectors(new,nb,q['attributes']['NORMAL'],3);lookup={};key=lambda p,u:tuple(round(v,6)for v in p+u)
 for i in range(len(op)):lookup.setdefault(key(op[i],ou[i]),[]).append(i)

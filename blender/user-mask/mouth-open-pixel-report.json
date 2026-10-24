@@ -1,0 +1,49 @@
+{
+  "image_size": [
+    3413,
+    1605
+  ],
+  "comparison": "same clean view viewport and hall, head and eyes temporarily zero for comparison",
+  "roi_metrics": [
+    {
+      "image_roi": [
+        1230,
+        850,
+        1320,
+        885
+      ],
+      "before_mae_to_hall_0_255": 6.75957671957672,
+      "after_mae_to_hall_0_255": 0.10687830687830686,
+      "after_mean_rgb": [
+        27.646349206349207,
+        29.288888888888888,
+        35.42285714285714
+      ],
+      "hall_mean_rgb": [
+        27.615873015873017,
+        29.304126984126984,
+        35.45460317460317
+      ]
+    },
+    {
+      "image_roi": [
+        1250,
+        860,
+        1300,
+        880
+      ],
+      "before_mae_to_hall_0_255": 4.996666666666667,
+      "after_mae_to_hall_0_255": 0.0,
+      "after_mean_rgb": [
+        26.808,
+        27.821,
+        32.898
+      ],
+      "hall_mean_rgb": [
+        26.808,
+        27.821,
+        32.898
+      ]
+    }
+  ]
+}

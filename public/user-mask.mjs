@@ -21,7 +21,7 @@ export function attachUserMask(doll, appearance) {
   doll.mtRandomized=['chestInhale'];doll.setMood('neutral');
   const meshes=[];doll.armature.traverse(m=>{if(m.isMesh)meshes.push(m);});
   const pivot=new THREE.Group();pivot.name='UserMaskMotion';pivot.position.set(0,1.67,0);doll.armature.add(pivot);
-  const boundary=[];let tongueMesh=null,tongueTipIndex=0;
+  const boundary=[];
   for(const mesh of meshes){
     mesh.geometry.computeVertexNormals();
     const p=mesh.geometry.attributes.position,c=mesh.geometry.attributes.color;
@@ -29,35 +29,21 @@ export function attachUserMask(doll, appearance) {
     pivot.add(mesh);mesh.position.y-=1.67;
     const old=Array.isArray(mesh.material)?mesh.material:[mesh.material];
     mesh.material=old.map(previous=>{
-      const interior=previous.name.startsWith('UserMouthInterior'),tongue=previous.name.startsWith('UserMouthInteriorTongue');
-      if(interior)mesh.renderOrder=tongue?1:-1;
-      if(tongue){tongueMesh=mesh;for(let i=1;i<p.count;i++)if(p.getZ(i)>p.getZ(tongueTipIndex))tongueTipIndex=i;}
-      const material=interior?new THREE.MeshBasicMaterial({color:previous.color.clone(),transparent:true,side:THREE.DoubleSide,depthWrite:!tongue,vertexColors:Boolean(c)}):new THREE.MeshBasicMaterial({map:previous.map || previous.emissiveMap,color:0xffffff,transparent:true,side:THREE.DoubleSide,depthWrite:true,vertexColors:Boolean(c)});
-      material.name=interior?previous.name:'UserAcceptedNeuralSurface';material.toneMapped=false;material.forceSinglePass=true;
+      const material=new THREE.MeshBasicMaterial({map:previous.map || previous.emissiveMap,color:0xffffff,transparent:true,side:THREE.DoubleSide,depthWrite:true,vertexColors:Boolean(c)});
+      material.name='UserAcceptedNeuralSurface';material.toneMapped=false;material.forceSinglePass=true;
       material.onBeforeCompile=shader=>{
         Object.assign(shader.uniforms,uniforms);
-        const declaration='uniform float uTime,uReveal,uActivity,uBrightness,uOpacity,uSpeed,uStrength; varying vec2 faceUv; varying vec3 mouthNormal;\n';
+        const declaration='uniform float uTime,uReveal,uActivity,uBrightness,uOpacity,uSpeed,uStrength; varying vec2 faceUv;\n';
         shader.vertexShader=declaration+shader.vertexShader;
         shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
           faceUv=uv;
-          mouthNormal=normalize(normalMatrix*normal);
           float scatter=1.-uReveal;
           transformed.x+=scatter*.027*sin(uv.y*37.+uv.x*21.+uTime*.23);
           transformed.y+=scatter*.020*cos(uv.x*31.-uv.y*17.+uTime*.19);
           transformed.z+=scatter*.014*sin(uv.x*27.+uv.y*23.);
         `);
         shader.fragmentShader=declaration+shader.fragmentShader;
-        if(interior)shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
-          vec2 cell=floor(faceUv*vec2(61.,47.));
-          float seed=fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);
-          float assemble=smoothstep(seed*.55,seed*.55+.45,uReveal);
-          float mouthShade=.45+.45*abs(dot(normalize(mouthNormal),normalize(vec3(-.2,.8,.5))));
-          outgoingLight*=uBrightness*mouthShade*${tongue?'.30':'1.'};
-          diffuseColor.a*=uReveal*assemble*${tongue?'(uOpacity*.1)':'1.'};
-          if(diffuseColor.a<.003)discard;
-          #include <opaque_fragment>
-        `);
-        else shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
+        shader.fragmentShader=shader.fragmentShader.replace('#include <opaque_fragment>',`
           float lum=dot(diffuseColor.rgb,vec3(.2126,.7152,.0722));
           float coverage=.24+.76*sqrt(clamp(lum*1.8,0.,1.));
           vec2 leftEye=(faceUv-vec2(.409,.38))/vec2(.063,.037);
@@ -81,7 +67,7 @@ export function attachUserMask(doll, appearance) {
           #include <opaque_fragment>
         `);
       };
-      material.customProgramCacheKey=()=>interior?(tongue?'user-mouth-tongue-alpha-v3':'user-mouth-cavity-v3'):'user-mask-live-v1';previous.dispose();return material;
+      material.customProgramCacheKey=()=> 'user-mask-live-v1';previous.dispose();return material;
     });
     if(mesh.material.length===1)mesh.material=mesh.material[0];
   }
@@ -131,7 +117,7 @@ export function attachUserMask(doll, appearance) {
     const phase=Math.min(1,Math.max(0,(now-revealStarted)/transitionMs)),ease=phase*phase*(3-2*phase);reveal=revealFrom+(target-revealFrom)*ease;
     uniforms.uReveal.value=reveal;uniforms.uTime.value=(now-started)/1000;uniforms.uActivity.value=activity;
     const stage=document.querySelector('#composite-stage');
-    if(stage){if(tongueMesh){const attr=tongueMesh.geometry.attributes.position,tip=new THREE.Vector3().fromBufferAttribute(attr,tongueTipIndex);tongueMesh.geometry.morphAttributes.position?.forEach((a,i)=>tip.addScaledVector(new THREE.Vector3().fromBufferAttribute(a,tongueTipIndex),tongueMesh.morphTargetInfluences[i]||0));stage.dataset.tongueTip=JSON.stringify(tip.toArray().map(v=>Number(v.toFixed(6))));stage.dataset.tongueOpacity=(visual.opacity*.1).toFixed(4);stage.dataset.tongueDepthWrite=String(tongueMesh.material.depthWrite);}stage.dataset.emotionMood=emotion.mood;stage.dataset.emotionStrength=String(emotion.strength);stage.dataset.emotionWeights=JSON.stringify(expression);stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=motion.yaw.toFixed(4);stage.dataset.headPitch=motion.pitch.toFixed(4);stage.dataset.motionBuild='continuous-2026-10-24';if(now-sampledAt>=100){sampledAt=now;motionSamples.push([Number(((now-started)/1000).toFixed(3)),Number(motion.yaw.toFixed(7)),Number(motion.pitch.toFixed(7)),speaking?1:0]);if(motionSamples.length>256)motionSamples.shift();stage.dataset.motionSamples=JSON.stringify(motionSamples);}stage.dataset.headMotion=String(visual.headMotion);stage.dataset.eyeMotion=String(visual.eyeMotion);stage.dataset.motionSource='shared-clock';stage.dataset.eyeRendered=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].flatMap(k=>{const mt=doll.mtAvatar?.[k];return mt?.ms?.map((a,i)=>a[mt.is[i]])||[0];})));stage.dataset.eyeMorph=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].map(k=>doll.mtAvatar?.[k]?.value||0)));stage.dataset.eyeYaw=motion.eyeYaw.toFixed(5);stage.dataset.eyePitch=motion.eyePitch.toFixed(5);stage.dataset.gazeTarget='virtual-screen-listener';stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
+    if(stage){stage.dataset.emotionMood=emotion.mood;stage.dataset.emotionStrength=String(emotion.strength);stage.dataset.emotionWeights=JSON.stringify(expression);stage.dataset.maskGeometry='user-accepted-2026-10-23';stage.dataset.faceReveal=reveal.toFixed(3);stage.dataset.lightActivity=activity.toFixed(3);stage.dataset.audioLevel=audioLevel.toFixed(3);stage.dataset.activityMode=speaking?'speech':'idle';stage.dataset.headYaw=motion.yaw.toFixed(4);stage.dataset.headPitch=motion.pitch.toFixed(4);stage.dataset.motionBuild='continuous-2026-10-24';if(now-sampledAt>=100){sampledAt=now;motionSamples.push([Number(((now-started)/1000).toFixed(3)),Number(motion.yaw.toFixed(7)),Number(motion.pitch.toFixed(7)),speaking?1:0]);if(motionSamples.length>256)motionSamples.shift();stage.dataset.motionSamples=JSON.stringify(motionSamples);}stage.dataset.headMotion=String(visual.headMotion);stage.dataset.eyeMotion=String(visual.eyeMotion);stage.dataset.motionSource='shared-clock';stage.dataset.eyeRendered=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].flatMap(k=>{const mt=doll.mtAvatar?.[k];return mt?.ms?.map((a,i)=>a[mt.is[i]])||[0];})));stage.dataset.eyeMorph=String(Math.max(...['eyeLookInLeft','eyeLookOutLeft','eyeLookInRight','eyeLookOutRight','eyeLookUpLeft','eyeLookDownLeft','eyeLookUpRight','eyeLookDownRight'].map(k=>doll.mtAvatar?.[k]?.value||0)));stage.dataset.eyeYaw=motion.eyeYaw.toFixed(5);stage.dataset.eyePitch=motion.eyePitch.toFixed(5);stage.dataset.gazeTarget='virtual-screen-listener';stage.dataset.userMouth=String(doll.mtAvatar?.viseme_aa?.value || doll.mtAvatar?.viseme_O?.value || 0);stage.dataset.blinkLeft=String(doll.mtAvatar?.eyeBlinkLeft?.value||0);stage.dataset.blinkRight=String(doll.mtAvatar?.eyeBlinkRight?.value||0);stage.dataset.blinkPeak=String(Math.max(Number(stage.dataset.blinkPeak||0),doll.mtAvatar?.eyeBlinkLeft?.value||0,doll.mtAvatar?.eyeBlinkRight?.value||0));}
     if(now-measured>2000){const fps=Math.round((doll.renderer.info.render.frame-frame)*1000/(now-measured));const output=document.querySelector('#face-performance');if(output){output.textContent=`Ваша маска: ${fps} fps · ${doll.renderer.info.render.triangles.toLocaleString('ru')} треугольников`;output.dataset.fps=String(fps);}measured=now;frame=doll.renderer.info.render.frame;}
     raf=requestAnimationFrame(tick);
   };raf=requestAnimationFrame(tick);

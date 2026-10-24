@@ -1,0 +1,30 @@
+{
+  "model": "user-mask-b358fbc4aeb1.glb",
+  "speech": {
+    "audio": "0.006",
+    "eyes": "195",
+    "head": "300",
+    "model": "/profiles/user-mask/user-mask-b358fbc4aeb1.glb",
+    "mouth": "0",
+    "phase": "speaking",
+    "requests": "1"
+  },
+  "poses_checked": [
+    "A",
+    "O",
+    "I",
+    "M"
+  ],
+  "quarter_view": "mouth-empty-after-A-quarter.jpg",
+  "tongue_and_cavity_materials_present": false,
+  "temporary_comparison_head_eye_intensities": [
+    0,
+    0
+  ],
+  "restored_intensities": [
+    300,
+    195
+  ],
+  "emotion_strength_preserved": 105,
+  "new_tts_requests": "1"
+}

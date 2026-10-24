@@ -1,0 +1,103 @@
+{
+  "formatVersion": 1,
+  "id": "user-mask",
+  "name": "Ваша маска · Blender",
+  "model": "user-mask-b358fbc4aeb1.glb",
+  "body": "F",
+  "cameraView": "head",
+  "appearance": {
+    "type": "filaments",
+    "style": "user-mask",
+    "color": "#ffffff",
+    "opacity": 0.95,
+    "brightness": 1,
+    "speed": 0.7,
+    "amplitude": 0.00035,
+    "activity": {
+      "type": "neural-glow",
+      "strength": 0.5
+    },
+    "attention": {
+      "headYawDegrees": 2.8,
+      "headPitchDegrees": 1.1,
+      "eyeDegrees": 2.2,
+      "compensation": 0.65,
+      "intervalMinMs": 2600,
+      "intervalMaxMs": 6500
+    }
+  },
+  "defaults": {
+    "mood": "neutral",
+    "lips": {
+      "PP": {
+        "viseme_PP": 0.9,
+        "viseme_aa": 0,
+        "viseme_O": 0,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "aa": {
+        "viseme_PP": 0,
+        "viseme_aa": 0.8,
+        "viseme_O": 0,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "O": {
+        "viseme_PP": 0,
+        "viseme_aa": 0,
+        "viseme_O": 0.85,
+        "viseme_I": 0,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      },
+      "I": {
+        "viseme_PP": 0,
+        "viseme_aa": 0,
+        "viseme_O": 0,
+        "viseme_I": 0.85,
+        "jawOpen": 0,
+        "mouthClose": 0,
+        "mouthOpen": 0,
+        "mouthFunnel": 0,
+        "mouthPucker": 0,
+        "mouthSmileLeft": 0,
+        "mouthSmileRight": 0,
+        "mouthStretchLeft": 0,
+        "mouthStretchRight": 0
+      }
+    },
+    "visuals": {
+      "opacity": 0.95,
+      "brightness": 1,
+      "speed": 0.7,
+      "activityStrength": 0.5,
+      "headMotion": 1,
+      "eyeMotion": 1,
+      "emotionStrength": 1
+    }
+  }
+}
