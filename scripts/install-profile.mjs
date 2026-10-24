@@ -6,7 +6,6 @@ import {validateGlb} from '../profile-store.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export async function install(source, destination = path.join(root, 'public/profiles')) {
   const profile = manifestOf(JSON.parse(await readFile(path.join(source, 'profile.json'), 'utf8')));
-  if (profile.id === 'training') throw new Error('id training зарезервирован');
   const model = path.join(source, profile.model);
   if (!(await lstat(model)).isFile()) throw new Error('Модель должна быть обычным файлом');
   validateGlb(await readFile(model));

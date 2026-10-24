@@ -14,4 +14,8 @@ process.env.DEV_HTTP = '1';
 process.env.PORT = process.env.PORT || '3100';
 process.env.TTS_SETTINGS_PATH = path.join(dir, 'tts.json');
 process.env.PROFILE_SETTINGS_PATH = path.join(dir, 'profiles.json');
+if(!existsSync(path.join(dir,'../public/profiles/user-mask/profile.json'))){
+  const {install}=await import('./install-profile.mjs');
+  await install(path.join(dir,'../assets/user-mask'));
+}
 await import('../server.mjs');

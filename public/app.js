@@ -233,9 +233,10 @@ const loadProfiles = async () => {
   }));
   let lastProfile;
   try { lastProfile = localStorage.getItem('avatar.profile'); } catch {}
-  let desired = compositeClean ? (params.get('profile') || 'reference-mask-002') : lastProfile;
-  if ((!desired || desired === 'quantum-face') && profiles.some(p=>p.id==='reference-mask-002')) desired='reference-mask-002';
-  await switchProfile(profiles.some(p=>p.id===desired) ? desired : 'training');
+  const desired=compositeClean?(params.get('profile')||'user-mask'):lastProfile;
+  const initial=profiles.find(p=>p.id===desired)||profiles.find(p=>p.id==='user-mask')||profiles[0];
+  if(!initial)throw new Error('Нет установленных профилей. Установите assets/user-mask.');
+  await switchProfile(initial.id);
   if (compositeClean) sceneChannel?.postMessage({kind:'ready'});
   document.querySelector('#profile-errors').textContent = result.errors.map(e => `${e.id}: ${e.message}`).join('\n');
 };

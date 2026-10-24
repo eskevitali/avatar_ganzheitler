@@ -39,9 +39,8 @@ export function validateGlb(bytes) {
   if (!sceneNodes.size || missing.length) throw new Error(`Несовместимая модель, отсутствуют: ${missing.join(', ') || 'сцена'}`);
   return doc;
 }
-export const training = {formatVersion: 1, id: 'training', name: 'Учебная кукла', model: 'brunette.glb', url: '/dolls/brunette.glb', body: 'F', cameraView: 'head', defaults: settingsOf()};
 export async function catalog(publicDir) {
-  const profiles = [training], errors = [];
+  const profiles = [], errors = [];
   const dir = path.join(publicDir, 'profiles');
   for (const entry of await readdir(dir, {withFileTypes: true}).catch(e => { if (e.code === 'ENOENT') return []; throw e; })) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;

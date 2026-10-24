@@ -6,8 +6,9 @@ import path from 'node:path';
 import {manifestOf, settingsOf} from '../public/profiles.mjs';
 import {catalog, validateGlb, saveSettings, readSettings, requiredBones, requiredMorphs} from '../profile-store.mjs';
 import {install} from '../scripts/install-profile.mjs';
-const original = await readFile(new URL('../public/dolls/brunette.glb', import.meta.url));
-const manifest = {formatVersion: 1, id: 'test-avatar', name: 'Test fixture (training model)', model: 'model.glb', body: 'F'};
+const current = JSON.parse(await readFile(new URL('../assets/user-mask/profile.json', import.meta.url)));
+const original = await readFile(new URL('../assets/user-mask/' + current.model, import.meta.url));
+const manifest = {formatVersion: 1, id: 'test-avatar', name: 'Current mask fixture', model: 'model.glb', body: 'F'};
 function mutate(edit) {
   const length = original.readUInt32LE(12);
   const doc = JSON.parse(original.toString('utf8', 20, 20 + length));
@@ -37,27 +38,27 @@ test('installation is discoverable without code changes; invalid/duplicate packa
     await writeFile(path.join(source, 'model.glb'), original);
     await install(source, path.join(publicDir, 'profiles'));
     const result = await catalog(publicDir);
-    assert.deepEqual(result.profiles.map(p => p.id), ['training', manifest.id]);
+    assert.deepEqual(result.profiles.map(p => p.id), [manifest.id]);
     assert.equal(result.errors.length, 0);
     await assert.rejects(install(source, path.join(publicDir, 'profiles')), /установлен/);
     assert.deepEqual(await readFile(path.join(publicDir, 'profiles/test-avatar/model.glb')), original);
     await writeFile(path.join(publicDir, 'profiles/test-avatar/model.glb'), 'bad');
     const invalid = await catalog(publicDir);
-    assert.equal(invalid.profiles.length, 1); assert.equal(invalid.errors.length, 1);
+    assert.equal(invalid.profiles.length, 0); assert.equal(invalid.errors.length, 1);
   } finally { await rm(temp, {recursive: true, force: true}); }
 });
 test('settings survive reload and stay independent per profile; invalid save preserves disk', async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'avatar-settings-'));
   try {
     const file = path.join(temp, 'profiles.json');
-    await Promise.all([saveSettings(file, 'training', {mood: 'happy', lips: {PP: {jawOpen: 0.23}}}),
+    await Promise.all([saveSettings(file, 'user-mask', {mood: 'happy', lips: {PP: {jawOpen: 0.23}}}),
     saveSettings(file, 'another', {mood: 'sad', lips: {PP: {jawOpen: 0.67}}})]);
     const stored = await readSettings(file);
-    assert.equal(stored.training.lips.PP.jawOpen, 0.23);
+    assert.equal(stored['user-mask'].lips.PP.jawOpen, 0.23);
     assert.equal(stored.another.lips.PP.jawOpen, 0.67);
-    await assert.rejects(saveSettings(file, 'training', {mood: 'invalid'}));
+    await assert.rejects(saveSettings(file, 'user-mask', {mood: 'invalid'}));
     assert.deepEqual(await readSettings(file), stored);
-    assert.equal(settingsOf(stored.training).mood, 'happy');
+    assert.equal(settingsOf(stored['user-mask']).mood, 'happy');
   } finally { await rm(temp, {recursive: true, force: true}); }
 });
 // Keep this list reviewable against the bundled loader when upgrading TalkingHead.
@@ -66,4 +67,18 @@ test('adapter lists all named pose bones used by the bundled vendor', async () =
   const poseSection = vendor.slice(vendor.indexOf('this.poseTemplates ='), vendor.indexOf('this.posePropNames ='));
   for (const match of poseSection.matchAll(/'([A-Z][A-Za-z0-9]+)\.(?:rotation|position|quaternion|scale)'/g)) assert.ok(requiredBones.includes(match[1]), match[1]);
   assert.ok(requiredMorphs.includes('eyeBlinkLeft'));
+});
+
+test('fresh installation contains only the accepted profile and matches its revision', async () => {
+  const {createHash} = await import('node:crypto');
+  const revision = JSON.parse(await readFile(new URL('../assets/user-mask/revision.json', import.meta.url)));
+  assert.equal(current.model, revision.model);
+  assert.equal(createHash('sha256').update(original).digest('hex'), revision.sha256);
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'current-mask-'));
+  try {
+    await install(new URL('../assets/user-mask/', import.meta.url).pathname, path.join(temp, 'profiles'));
+    const result = await catalog(temp);
+    assert.deepEqual(result.profiles.map(p => p.id), ['user-mask']);
+    assert.deepEqual(result.errors, []);
+  } finally { await rm(temp, {recursive:true, force:true}); }
 });

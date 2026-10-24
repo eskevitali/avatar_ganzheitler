@@ -6,3 +6,6 @@ secrets
 README.md
 
 .local-preview
+
+public/profiles/
+public/dolls/
